@@ -1,0 +1,32 @@
+:root {
+	--color-bg: #f8fafc;
+	--color-surface: #ffffff;
+	--color-border: #cbd5e1;
+	--color-text: #0f172a;
+	--color-muted: #64748b;
+	--color-accent: #1d4ed8;
+	--color-accent-soft: #dbeafe;
+	--color-sidebar: #0f172a;
+	--color-sidebar-text: #e2e8f0;
+
+	font-family:
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		Roboto,
+		sans-serif;
+	color: var(--color-text);
+	background: var(--color-bg);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+}
+
+a {
+	color: var(--color-accent);
+}
