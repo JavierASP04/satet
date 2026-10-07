@@ -4,9 +4,9 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
-		"start": "tsx --env-file-if-exists=../../.env src/server.ts",
-		"check": "tsc --noEmit"
+		"dev": "node --watch --env-file-if-exists=../../.env src/server.js",
+		"start": "node --env-file-if-exists=../../.env src/server.js",
+		"check": "find src -name '*.js' -print0 | xargs -0 -n1 node --check"
 	},
 	"dependencies": {
 		"@satet/shared": "*",
@@ -14,13 +14,5 @@
 		"express": "^5.2.1",
 		"pg": "^8.16.3",
 		"zod": "^4.1.12"
-	},
-	"devDependencies": {
-		"@types/cors": "^2.8.19",
-		"@types/express": "^5.0.6",
-		"@types/node": "^22",
-		"@types/pg": "^8.15.6",
-		"tsx": "^4.20.6",
-		"typescript": "^6.0.3"
 	}
 }

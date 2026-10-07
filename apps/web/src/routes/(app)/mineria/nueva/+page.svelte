@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
 	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
 </script>
 

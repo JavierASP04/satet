@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
 	import { APP_FULL_NAME, APP_NAME } from '@satet/shared';
 </script>
 

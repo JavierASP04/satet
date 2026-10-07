@@ -1,10 +1,9 @@
-<script lang="ts">
+<script>
 	import { page } from '$app/state';
 	import { APP_NAME } from '@satet/shared';
-	import { NAVIGATION } from '#lib/navigation.ts';
-	import type { LayoutProps } from './$types';
+	import { NAVIGATION } from '#lib/navigation.js';
 
-	let { children }: LayoutProps = $props();
+	let { children } = $props();
 </script>
 
 <div class="shell">

@@ -1,14 +1,5 @@
-<script lang="ts">
-	interface Props {
-		title: string;
-		/** Número de módulo según la especificación técnica. */
-		module: string;
-		description?: string;
-		/** Endpoints de la API que consumirá esta pantalla. */
-		endpoints?: string[];
-	}
-
-	let { title, module, description, endpoints = [] }: Props = $props();
+<script>
+	let { title, module, description, endpoints = [] } = $props();
 </script>
 
 <svelte:head>

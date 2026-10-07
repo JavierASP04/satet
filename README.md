@@ -10,8 +10,8 @@ La especificación técnica completa está en [`docs/especificacion-satet.md`](d
 
 | Capa          | Tecnología                                                  |
 | ------------- | ----------------------------------------------------------- |
-| Frontend      | SvelteKit 3 (Svelte 5, TypeScript, `adapter-node`)          |
-| Backend       | Node.js + Express 5 + TypeScript (ejecutado con `tsx`)      |
+| Frontend      | SvelteKit 3 (Svelte 5, JavaScript, `adapter-node`)          |
+| Backend       | Node.js + Express 5 (JavaScript)                            |
 | Base de datos | PostgreSQL (`pg`, SQL parametrizado, `database/schema.sql`) |
 | Colas / caché | Redis                                                       |
 | Compartido    | `@satet/shared`: roles, permisos RBAC, enums y constantes   |
@@ -27,11 +27,11 @@ satet/
 │   │       ├── db/           # Pool de PostgreSQL
 │   │       ├── lib/          # Utilidades HTTP (errores, respuesta 501)
 │   │       ├── middleware/   # authenticate, authorize (RBAC), validate, errores
-│   │       ├── modules/      # Un directorio por recurso: *.routes.ts + *.controller.ts
-│   │       └── routes.ts     # Montaje de módulos bajo /api/v1
+│   │       ├── modules/      # Un directorio por recurso: *.routes.js + *.controller.js
+│   │       └── routes.js     # Montaje de módulos bajo /api/v1
 │   └── web/                  # Frontend SvelteKit
 │       └── src/
-│           ├── lib/          # navigation.ts, components/, server/api.ts
+│           ├── lib/          # navigation.js, components/, server/api.js
 │           └── routes/
 │               ├── (auth)/   # login, registro
 │               └── (app)/    # Pantallas de cada módulo
@@ -83,10 +83,10 @@ El esquema `database/schema.sql` se aplica automáticamente la primera vez que s
 | Script             | Descripción                                         |
 | ------------------ | --------------------------------------------------- |
 | `npm run dev`      | Levanta API y web en paralelo                       |
-| `npm run dev:api`  | Solo la API (recarga con `tsx watch`)               |
+| `npm run dev:api`  | Solo la API (`node --watch`)                        |
 | `npm run dev:web`  | Solo la web (Vite)                                  |
 | `npm run build`    | Compila la web para producción                      |
-| `npm run check`    | Verificación de tipos en todos los workspaces       |
+| `npm run check`    | `node --check` en los workspaces                    |
 | `npm run format`   | Formatea con Prettier                               |
 | `npm run db:up`    | Inicia PostgreSQL y Redis                           |
 | `npm run db:down`  | Detiene los contenedores                            |
@@ -108,9 +108,8 @@ Cada endpoint ya está declarado con su middleware de autenticación y permiso R
 
 ## Notas de SvelteKit 3
 
-- El alias de `src/lib` es `#lib` (campo `imports` de `package.json`), no `$lib`. Los módulos TS se importan con extensión: `#lib/navigation.ts`.
-- Las variables de entorno se declaran en `apps/web/src/env.ts` con `defineEnvVars` y se importan desde `$app/env/private` / `$app/env/public`.
-- Los tipos de hooks vienen de `@sveltejs/kit/hooks` (p. ej. `Handle`).
+- El alias de `src/lib` es `#lib` (campo `imports` de `package.json`), no `$lib`. Los módulos JS se importan con extensión: `#lib/navigation.js`.
+- Las variables de entorno se declaran en `apps/web/src/env.js` con `defineEnvVars` y se importan desde `$app/env/private` / `$app/env/public`.
 - shadcn-svelte aún no reconoce `#lib`, por eso no está instalado.
 
 ## Pendiente
