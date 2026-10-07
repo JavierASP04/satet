@@ -4,7 +4,7 @@ Sistema Integrado de Recaudación y Control Tributario del Estado Trujillo.
 
 La especificación técnica completa está en [`docs/especificacion-satet.md`](docs/especificacion-satet.md).
 
-> **Estado:** solo existe la estructura inicial del proyecto. Ningún módulo de negocio está implementado: las pantallas son marcadores (`ModulePlaceholder`) y los endpoints de la API responden `501 NOT_IMPLEMENTED`.
+> **Estado:** la API implementa el módulo 01 (registro, sesión JWT en cookie y aprobación de contribuyentes). El frontend sigue en marcadores (`ModulePlaceholder`) y el resto de endpoints de la API responde `501 NOT_IMPLEMENTED`. El contrato de autenticación está en [`docs/api-auth.md`](docs/api-auth.md).
 
 ## Stack
 
@@ -94,17 +94,17 @@ El esquema `database/schema.sql` se aplica automáticamente la primera vez que s
 
 ## Módulos y endpoints
 
-Cada endpoint ya está declarado con su middleware de autenticación y permiso RBAC, y responde `501` hasta que se implemente.
+El módulo 01 responde de verdad. El resto de endpoints está declarado con autenticación y permiso RBAC, y responde `501` cuando la sesión y el permiso son válidos. Sin cookie la respuesta es `401`; con un rol sin permiso, `403`.
 
-| Módulo                            | Web                                                                     | API (`/api/v1`)                                                                                     |
-| --------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 01 Contribuyentes y autenticación | `/login`, `/registro`, `/perfil`, `/contribuyentes/pendientes`          | `auth/register`, `auth/login`, `taxpayers/profile`, `taxpayers/pending`, `taxpayers/:id/approve`    |
-| 02 Impuesto minero                | `/mineria`, `/mineria/nueva`, `/mineria/[id]`, `/mineria/extemporaneas` | `mining/declarations`, `mining/declarations/my`, `mining/declarations/:id`, `mining/extemporaneous` |
-| 03 Impuesto 1 x 1000              | `/uno-por-mil`, `/uno-por-mil/cargar`                                   | `one-per-thousand/batch`, `one-per-thousand/single`, `one-per-thousand/list`                        |
-| 04 Timbres y tasa BCV             | `/timbres`, `/timbres/comprar`                                          | `stamps/purchase`, `stamps/:uuid/pdf`, `bcv-rate/current`                                           |
-| 05 Pagos y conciliación           | `/pagos/registrar`, `/pagos/conciliacion`                               | `payments/upload`, `payments/pending`, `payments/:id/verify`, `payments/:id/reject`                 |
-| 06 Verificación SAREN             | `/saren/verificar`, `/saren/historial`                                  | `saren/verify-stamp`, `saren/history`                                                               |
-| 07 Reportes, auditoría y POA      | `/panel`, `/reportes`, `/auditoria`                                     | `reports/revenue-summary`, `reports/export/excel`, `reports/export/pdf`, `audit/logs`               |
+| Módulo                            | Web                                                                     | API (`/api/v1`)                                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 01 Contribuyentes y autenticación | `/login`, `/registro`, `/perfil`, `/contribuyentes/pendientes`          | `auth/register`, `auth/login`, `auth/logout`, `taxpayers/profile`, `taxpayers/pending`, `taxpayers/:id/approve` |
+| 02 Impuesto minero                | `/mineria`, `/mineria/nueva`, `/mineria/[id]`, `/mineria/extemporaneas` | `mining/declarations`, `mining/declarations/my`, `mining/declarations/:id`, `mining/extemporaneous`             |
+| 03 Impuesto 1 x 1000              | `/uno-por-mil`, `/uno-por-mil/cargar`                                   | `one-per-thousand/batch`, `one-per-thousand/single`, `one-per-thousand/list`                                    |
+| 04 Timbres y tasa BCV             | `/timbres`, `/timbres/comprar`                                          | `stamps/purchase`, `stamps/:uuid/pdf`, `bcv-rate/current`                                                       |
+| 05 Pagos y conciliación           | `/pagos/registrar`, `/pagos/conciliacion`                               | `payments/upload`, `payments/pending`, `payments/:id/verify`, `payments/:id/reject`                             |
+| 06 Verificación SAREN             | `/saren/verificar`, `/saren/historial`                                  | `saren/verify-stamp`, `saren/history`                                                                           |
+| 07 Reportes, auditoría y POA      | `/panel`, `/reportes`, `/auditoria`                                     | `reports/revenue-summary`, `reports/export/excel`, `reports/export/pdf`, `audit/logs`                           |
 
 ## Notas de SvelteKit 3
 
@@ -112,7 +112,11 @@ Cada endpoint ya está declarado con su middleware de autenticación y permiso R
 - Las variables de entorno se declaran en `apps/web/src/env.js` con `defineEnvVars` y se importan desde `$app/env/private` / `$app/env/public`.
 - shadcn-svelte aún no reconoce `#lib`, por eso no está instalado.
 
+## Autenticación
+
+La cookie de sesión se llama `satet_session` (JWT httpOnly; `Secure` sale de `SESSION_COOKIE_SECURE`; `SameSite=Lax`). El detalle de cuerpos, códigos de error y el flujo de aprobación está en [`docs/api-auth.md`](docs/api-auth.md).
+
 ## Pendiente
 
-- Decidir ORM/migraciones (Prisma o Drizzle) antes del Módulo 01.
-- Implementar los módulos en el orden de la sección 5 de la especificación, empezando por autenticación y RBAC.
+- Pantallas de login, registro y aprobación en `apps/web` (las hace otra persona; la API ya está lista).
+- Módulos 02 a 07, en el orden de la sección 5 de la especificación. El bloqueo de declaraciones y timbres para contribuyentes sin aprobar se aplica cuando esos módulos dejen de responder `501`.

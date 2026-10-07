@@ -1,9 +1,13 @@
 import { ERROR_CODES } from '@satet/shared';
+import { conflictFromDb } from '../lib/db-errors.js';
 import { errorBody, HttpError } from '../lib/http.js';
 
 export function errorHandler(err, _req, res, _next) {
-	if (err instanceof HttpError) {
-		res.status(err.status).json(errorBody(err.code, err.message, err.details));
+	const httpError = err instanceof HttpError ? err : conflictFromDb(err);
+	if (httpError) {
+		res
+			.status(httpError.status)
+			.json(errorBody(httpError.code, httpError.message, httpError.details));
 		return;
 	}
 

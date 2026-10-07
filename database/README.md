@@ -9,4 +9,4 @@ Para reaplicar el esquema desde cero (borra los datos locales):
 npm run db:reset
 ```
 
-> Pendiente: decidir ORM/migraciones (Prisma o Drizzle) antes del Módulo 01.
+La API accede con `pg` y SQL parametrizado. No hay ORM: `schema.sql` es el esquema que se ejecuta.

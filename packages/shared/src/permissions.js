@@ -30,7 +30,11 @@ export const ROLE_PERMISSIONS = Object.freeze({
 		P.DECLARACIONES_SUPERVISAR,
 		P.DASHBOARD_POA
 	]),
-	[ROLES.ANALISTA_TESORERIA]: Object.freeze([P.PERFIL_GESTIONAR, P.PAGOS_CONCILIAR, P.DASHBOARD_POA]),
+	[ROLES.ANALISTA_TESORERIA]: Object.freeze([
+		P.PERFIL_GESTIONAR,
+		P.PAGOS_CONCILIAR,
+		P.DASHBOARD_POA
+	]),
 	[ROLES.VERIFICADOR_SAREN]: Object.freeze([P.PERFIL_GESTIONAR, P.TIMBRES_CONSUMIR]),
 	[ROLES.ADMIN_SISTEMA]: Object.freeze(Object.values(PERMISSIONS))
 });
@@ -42,5 +46,6 @@ export const ROLE_PERMISSIONS = Object.freeze({
  * @returns {boolean}
  */
 export function hasPermission(role, permission) {
-	return ROLE_PERMISSIONS[role].includes(permission);
+	const granted = ROLE_PERMISSIONS[role];
+	return Array.isArray(granted) && granted.includes(permission);
 }
