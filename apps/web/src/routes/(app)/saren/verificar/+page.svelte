@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="06"
 	title="Verificar timbre"
-	description="Escaneo del QR o ingreso del serial; el timbre se consume una sola vez."
-	endpoints={['POST /api/v1/saren/verify-stamp']}
+	description="El serial o el QR se valida y el timbre se consume una sola vez."
 />

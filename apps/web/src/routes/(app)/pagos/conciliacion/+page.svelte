@@ -1,14 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="05"
 	title="Conciliación de pagos"
-	description="Verificación o rechazo de pagos por Tesorería."
-	endpoints={[
-		'GET /api/v1/payments/pending',
-		'PATCH /api/v1/payments/:id/verify',
-		'PATCH /api/v1/payments/:id/reject'
-	]}
+	description="Tesorería verifica o rechaza los pagos pendientes."
 />

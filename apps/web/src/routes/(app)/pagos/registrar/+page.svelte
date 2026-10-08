@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="05"
 	title="Registrar pago"
-	description="Registro de transferencia y váucher en la cuenta institucional correspondiente."
-	endpoints={['POST /api/v1/payments/upload']}
+	description="Transferencia y váucher contra la cuenta institucional del tributo."
 />

@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="03"
 	title="Cargar órdenes de pago"
 	description="Carga individual o masiva de órdenes de pago."
-	endpoints={['POST /api/v1/one-per-thousand/single', 'POST /api/v1/one-per-thousand/batch']}
 />

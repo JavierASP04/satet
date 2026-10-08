@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="02"
 	title="Nueva declaración minera"
-	description="Lapso declarativo: días 1 al 10 de cada mes."
-	endpoints={['POST /api/v1/mining/declarations']}
+	description="Lapso declarativo: días 1 al 10 de cada mes. Después de esa fecha la declaración queda extemporánea."
 />

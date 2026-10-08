@@ -1,4 +1,4 @@
-import { PERMISSIONS } from '@satet/shared';
+import { hasPermission, PERMISSIONS } from '@satet/shared';
 
 const P = PERMISSIONS;
 
@@ -74,3 +74,11 @@ export const NAVIGATION = [
 		]
 	}
 ];
+
+/** @param {string} role */
+export function visibleNavigation(role) {
+	return NAVIGATION.map((group) => ({
+		...group,
+		items: group.items.filter((item) => !item.permission || hasPermission(role, item.permission))
+	})).filter((group) => group.items.length > 0);
+}
