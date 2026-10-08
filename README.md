@@ -4,7 +4,7 @@ Sistema Integrado de Recaudación y Control Tributario del Estado Trujillo.
 
 La especificación técnica completa está en [`docs/especificacion-satet.md`](docs/especificacion-satet.md).
 
-> **Estado:** la API implementa el módulo 01 (registro, sesión JWT en cookie y aprobación de contribuyentes). El frontend sigue en marcadores (`ModulePlaceholder`) y el resto de endpoints de la API responde `501 NOT_IMPLEMENTED`. El contrato de autenticación está en [`docs/api-auth.md`](docs/api-auth.md).
+> **Estado:** la API implementa el módulo 01 (registro, sesión JWT en cookie y aprobación de contribuyentes) y la tasa BCV del módulo 04 (cron a las 18:00 y `GET /bcv-rate/current`). El frontend sigue en marcadores (`ModulePlaceholder`). El resto de endpoints responde `501 NOT_IMPLEMENTED`. Contratos: [`docs/api-auth.md`](docs/api-auth.md) y [`docs/api-bcv.md`](docs/api-bcv.md).
 
 ## Stack
 
@@ -94,14 +94,14 @@ El esquema `database/schema.sql` se aplica automáticamente la primera vez que s
 
 ## Módulos y endpoints
 
-El módulo 01 responde de verdad. El resto de endpoints está declarado con autenticación y permiso RBAC, y responde `501` cuando la sesión y el permiso son válidos. Sin cookie la respuesta es `401`; con un rol sin permiso, `403`.
+El módulo 01 y `GET /bcv-rate/current` responden de verdad. El resto de endpoints está declarado con autenticación y permiso RBAC, y responde `501` cuando la sesión y el permiso son válidos. Sin cookie la respuesta es `401`; con un rol sin permiso, `403`. La tasa BCV se documenta en [`docs/api-bcv.md`](docs/api-bcv.md).
 
 | Módulo                            | Web                                                                     | API (`/api/v1`)                                                                                                 |
 | --------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | 01 Contribuyentes y autenticación | `/login`, `/registro`, `/perfil`, `/contribuyentes/pendientes`          | `auth/register`, `auth/login`, `auth/logout`, `taxpayers/profile`, `taxpayers/pending`, `taxpayers/:id/approve` |
 | 02 Impuesto minero                | `/mineria`, `/mineria/nueva`, `/mineria/[id]`, `/mineria/extemporaneas` | `mining/declarations`, `mining/declarations/my`, `mining/declarations/:id`, `mining/extemporaneous`             |
 | 03 Impuesto 1 x 1000              | `/uno-por-mil`, `/uno-por-mil/cargar`                                   | `one-per-thousand/batch`, `one-per-thousand/single`, `one-per-thousand/list`                                    |
-| 04 Timbres y tasa BCV             | `/timbres`, `/timbres/comprar`                                          | `stamps/purchase`, `stamps/:uuid/pdf`, `bcv-rate/current`                                                       |
+| 04 Timbres y tasa BCV             | `/timbres`, `/timbres/comprar`                                          | `bcv-rate/current` (implementado). `stamps/purchase` y `stamps/:uuid/pdf` siguen en `501`                       |
 | 05 Pagos y conciliación           | `/pagos/registrar`, `/pagos/conciliacion`                               | `payments/upload`, `payments/pending`, `payments/:id/verify`, `payments/:id/reject`                             |
 | 06 Verificación SAREN             | `/saren/verificar`, `/saren/historial`                                  | `saren/verify-stamp`, `saren/history`                                                                           |
 | 07 Reportes, auditoría y POA      | `/panel`, `/reportes`, `/auditoria`                                     | `reports/revenue-summary`, `reports/export/excel`, `reports/export/pdf`, `audit/logs`                           |
@@ -119,4 +119,4 @@ La cookie de sesión se llama `satet_session` (JWT httpOnly; `Secure` sale de `S
 ## Pendiente
 
 - Pantallas de login, registro y aprobación en `apps/web` (las hace otra persona; la API ya está lista).
-- Módulos 02 a 07, en el orden de la sección 5 de la especificación. El bloqueo de declaraciones y timbres para contribuyentes sin aprobar se aplica cuando esos módulos dejen de responder `501`.
+- Timbres (emisión y PDF) y los módulos 02, 03, 05, 06 y 07. La tasa BCV ya se consulta y se guarda. El bloqueo de declaraciones y timbres para contribuyentes sin aprobar se aplica cuando esos módulos dejen de responder `501`.

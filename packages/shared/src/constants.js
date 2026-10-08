@@ -35,3 +35,9 @@ export const ONE_PER_THOUSAND_DIVISOR = 1000;
 
 /** Cron diario de la tasa BCV EUR/VED a las 18:00 (Módulo 04). */
 export const BCV_RATE_CRON = '0 18 * * *';
+
+/** Venezuela no usa horario de verano. El cron de las 18:00 se interpreta en esta zona. */
+export const BCV_RATE_TIME_ZONE = 'America/Caracas';
+
+/** Página oficial. La tasa EUR está en el bloque `#euro`. */
+export const BCV_RATE_SOURCE_URL = 'https://www.bcv.org.ve/';
