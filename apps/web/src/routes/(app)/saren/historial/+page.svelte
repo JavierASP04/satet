@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="06"
 	title="Historial de verificaciones"
-	description="Verificaciones realizadas por oficina."
-	endpoints={['GET /api/v1/saren/history']}
+	description="Verificaciones hechas por la oficina."
 />

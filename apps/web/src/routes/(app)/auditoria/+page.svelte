@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="07"
 	title="Auditoría"
-	description="Bitácora inmutable de acciones del sistema."
-	endpoints={['GET /api/v1/audit/logs']}
+	description="Bitácora de las acciones registradas en el sistema."
 />

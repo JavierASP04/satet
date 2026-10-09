@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="04"
 	title="Mis timbres fiscales"
-	description="Timbres electrónicos emitidos con PDF y código QR."
-	endpoints={['GET /api/v1/stamps/:uuid/pdf']}
+	description="Timbres electrónicos emitidos, con su PDF y código QR."
 />

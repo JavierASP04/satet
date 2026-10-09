@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="04"
 	title="Comprar timbre fiscal"
-	description="Monto en EUR convertido a VED con la tasa BCV del día."
-	endpoints={['GET /api/v1/bcv-rate/current', 'POST /api/v1/stamps/purchase']}
+	description="El monto en euros se convierte a bolívares con la tasa BCV del día."
 />

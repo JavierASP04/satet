@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="02"
 	title="Declaraciones extemporáneas"
-	description="Reporte para Recaudación y Fiscalización."
-	endpoints={['GET /api/v1/mining/extemporaneous']}
+	description="Reporte para Recaudación y Fiscalización de declaraciones presentadas después del día 10."
 />

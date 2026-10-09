@@ -1,9 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="02"
 	title="Detalle de declaración minera"
-	endpoints={['GET /api/v1/mining/declarations/:id']}
+	description="Consulta de una declaración jurada y de su estado de pago."
 />

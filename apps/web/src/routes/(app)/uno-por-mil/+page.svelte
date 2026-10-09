@@ -1,10 +1,9 @@
 <script>
-	import ModulePlaceholder from '#lib/components/ModulePlaceholder.svelte';
+	import Screen from '#lib/components/Screen.svelte';
 </script>
 
-<ModulePlaceholder
+<Screen
 	module="03"
 	title="Retenciones 1 x 1000"
-	description="Retenciones registradas sobre órdenes de pago."
-	endpoints={['GET /api/v1/one-per-thousand/list']}
+	description="Retenciones registradas sobre órdenes de pago de entes públicos y bancos."
 />
