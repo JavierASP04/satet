@@ -1,0 +1,30 @@
+{
+	"name": "satet",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"workspaces": [
+		"apps/web",
+		"apps/api",
+		"packages/shared"
+	],
+	"engines": {
+		"node": ">=22.17"
+	},
+	"scripts": {
+		"dev": "concurrently -n api,web -c blue,magenta \"npm run dev -w @satet/api\" \"npm run dev -w @satet/web\"",
+		"dev:api": "npm run dev -w @satet/api",
+		"dev:web": "npm run dev -w @satet/web",
+		"build": "npm run build -w @satet/web",
+		"check": "npm run check --workspaces --if-present",
+		"format": "prettier --write .",
+		"db:up": "docker compose up -d",
+		"db:down": "docker compose down",
+		"db:reset": "docker compose down -v && docker compose up -d"
+	},
+	"devDependencies": {
+		"concurrently": "^9.2.1",
+		"prettier": "^3.6.2",
+		"prettier-plugin-svelte": "^3.4.0"
+	}
+}
