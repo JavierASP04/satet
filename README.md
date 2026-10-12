@@ -76,7 +76,7 @@ npm run dev
 | PostgreSQL | `localhost:5433` (usuario/clave `satet`) |
 | Redis      | `localhost:6380`                         |
 
-El esquema `database/schema.sql` se aplica automáticamente la primera vez que se crea el volumen de PostgreSQL. Para reaplicarlo desde cero: `npm run db:reset` (borra los datos locales).
+El esquema `database/schema.sql` y las semillas `database/seeds/dev.sql` se aplican automáticamente la primera vez que se crea el volumen de PostgreSQL. Queda un administrador local (`admin@satet.local` / `SatetAdmin12`) y las cuentas A, B y C. Para reaplicarlo desde cero: `npm run db:reset` (borra los datos locales).
 
 ## Scripts (raíz)
 

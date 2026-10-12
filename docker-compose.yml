@@ -14,6 +14,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       # Solo se ejecuta al crear el volumen por primera vez (usar `npm run db:reset` para reaplicar).
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/seeds/dev.sql:/docker-entrypoint-initdb.d/02-dev.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 5s
