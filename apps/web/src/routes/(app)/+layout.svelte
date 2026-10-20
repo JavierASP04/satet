@@ -7,6 +7,59 @@
 
 	let { data, children } = $props();
 	const groups = $derived(visibleNavigation(data.user.role));
+	let forced = $state(/** @type {Record<string, boolean>} */ ({}));
+
+	/**
+	 * @param {string} pathname
+	 * @param {string} href
+	 */
+	function pathMatches(pathname, href) {
+		if (pathname === href) return true;
+		if (href === '/panel') return false;
+		return pathname.startsWith(`${href}/`);
+	}
+
+	/** @param {{ items: { href: string }[] }} group */
+	function groupIsCurrent(group) {
+		const pathname = page.url.pathname;
+		return group.items.some((item) => pathMatches(pathname, item.href));
+	}
+
+	/**
+	 * @param {string} label
+	 * @param {boolean} current
+	 */
+	function groupIsOpen(label, current) {
+		if (label in forced) return forced[label];
+		return current;
+	}
+
+	/**
+	 * @param {string} label
+	 * @param {boolean} current
+	 */
+	function toggleGroup(label, current) {
+		forced[label] = !groupIsOpen(label, current);
+	}
+
+	/** @param {{ module: string, label: string }} group */
+	function menuId(group) {
+		const slug = group.label
+			.toLowerCase()
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.replace(/[^a-z0-9]+/g, '-');
+		return `menu-${group.module}-${slug}`;
+	}
+
+	$effect(() => {
+		const pathname = page.url.pathname;
+		for (const group of groups) {
+			if (group.items.some((item) => pathMatches(pathname, item.href))) {
+				forced[group.label] = true;
+			}
+		}
+	});
 </script>
 
 <div class="shell">
@@ -20,9 +73,24 @@
 		</a>
 		<nav>
 			{#each groups as group (group.label)}
+				{@const current = groupIsCurrent(group)}
+				{@const open = group.items.length < 2 || groupIsOpen(group.label, current)}
 				<div class="group">
-					<p>{group.label}</p>
-					<ul>
+					{#if group.items.length > 1}
+						<button
+							type="button"
+							aria-expanded={open}
+							aria-controls={menuId(group)}
+							class:open
+							onclick={() => toggleGroup(group.label, current)}
+						>
+							{group.label}
+							<span class="chevron" aria-hidden="true"></span>
+						</button>
+					{:else}
+						<p>{group.label}</p>
+					{/if}
+					<ul id={menuId(group)} hidden={!open}>
 						{#each group.items as item (item.href)}
 							<li>
 								<a
@@ -42,8 +110,11 @@
 	<div class="workspace">
 		<header class="topbar">
 			<div class="who">
-				<p>{data.user.email}</p>
-				<p>{ROLE_LABELS[data.user.role] ?? data.user.role}</p>
+				<span class="avatar" aria-hidden="true">{data.user.email.slice(0, 1).toUpperCase()}</span>
+				<div>
+					<p>{data.user.email}</p>
+					<p>{ROLE_LABELS[data.user.role] ?? data.user.role}</p>
+				</div>
 			</div>
 			<form method="POST" action="/salir">
 				<Button type="submit" variant="ghost">Cerrar sesión</Button>
@@ -118,13 +189,59 @@
 		color: var(--sidebar-muted);
 	}
 
-	.group p {
-		margin: 0.85rem 0.7rem 0.35rem;
+	.group p,
+	.group button {
+		margin: 0.85rem 0.35rem 0.35rem;
 		color: var(--sidebar-muted);
 		font-size: 0.68rem;
 		font-weight: 700;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
+	}
+
+	.group p {
+		padding: 0 0.35rem;
+	}
+
+	.group button {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		width: calc(100% - 0.7rem);
+		padding: 0.35rem 0.45rem;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		font: inherit;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.group button:hover {
+		background: rgb(255 255 255 / 0.08);
+		color: var(--sidebar-text);
+	}
+
+	.group button:focus-visible {
+		outline: 3px solid rgb(255 255 255 / 0.35);
+		outline-offset: 2px;
+	}
+
+	.chevron {
+		width: 0.38rem;
+		height: 0.38rem;
+		border-right: 1.5px solid currentColor;
+		border-bottom: 1.5px solid currentColor;
+		transform: rotate(-45deg);
+		transition: transform 0.16s ease;
+	}
+
+	.group button.open .chevron {
+		transform: rotate(45deg);
 	}
 
 	ul {
@@ -152,6 +269,7 @@
 
 	.workspace {
 		min-width: 0;
+		max-width: 78rem;
 	}
 
 	.topbar {
@@ -159,7 +277,29 @@
 		align-items: center;
 		justify-content: flex-end;
 		gap: 0.8rem;
-		padding: 0.35rem 0.2rem 0.9rem;
+		margin-bottom: 1rem;
+		padding: 0.45rem 0.5rem 0.45rem 0.7rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--surface);
+		box-shadow: 0 10px 28px rgb(58 16 24 / 0.05);
+	}
+
+	.who {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+	}
+
+	.avatar {
+		display: grid;
+		width: 2.15rem;
+		height: 2.15rem;
+		place-items: center;
+		border-radius: 999px;
+		background: var(--wine-deep);
+		color: #fff;
+		font-weight: 750;
 	}
 
 	.who p {
@@ -206,7 +346,8 @@
 			min-width: max-content;
 		}
 
-		.group p {
+		.group p,
+		.group button {
 			margin-top: 0;
 		}
 

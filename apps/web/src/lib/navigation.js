@@ -17,6 +17,11 @@ export const NAVIGATION = [
 				label: 'Solicitudes pendientes',
 				href: '/contribuyentes/pendientes',
 				permission: P.CONTRIBUYENTES_APROBAR
+			},
+			{
+				label: 'Verificadores SAREN',
+				href: '/usuarios/verificadores',
+				permission: P.USUARIOS_CREAR
 			}
 		]
 	},

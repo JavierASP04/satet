@@ -57,6 +57,11 @@ textarea {
 	font: inherit;
 }
 
+::selection {
+	background: var(--wine-soft);
+	color: var(--wine-deep);
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
 	animation: none;

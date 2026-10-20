@@ -12,7 +12,9 @@ export const PERMISSIONS = Object.freeze({
 	PAGOS_CONCILIAR: 'pagos:conciliar',
 	TIMBRES_CONSUMIR: 'timbres:consumir',
 	DASHBOARD_POA: 'dashboard:poa',
-	AUDITORIA_CONSULTAR: 'auditoria:consultar'
+	AUDITORIA_CONSULTAR: 'auditoria:consultar',
+	/** Alta de cuentas de personal. Solo el administrador del sistema. */
+	USUARIOS_CREAR: 'usuarios:crear'
 });
 
 const P = PERMISSIONS;

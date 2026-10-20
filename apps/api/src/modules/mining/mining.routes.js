@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { PERMISSIONS } from '@satet/shared';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
+import { validate } from '../../middleware/validate.js';
 import * as controller from './mining.controller.js';
+import { createDeclarationSchema } from './mining.schema.js';
 
 export const miningRouter = Router();
 
@@ -11,6 +13,7 @@ miningRouter.use(authenticate);
 miningRouter.post(
 	'/declarations',
 	authorize(PERMISSIONS.DECLARACIONES_CREAR),
+	validate(createDeclarationSchema),
 	controller.createDeclaration
 );
 miningRouter.get(

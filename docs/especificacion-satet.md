@@ -16,8 +16,8 @@
 
 ## 1. ARQUITECTURA Y STACK TECNOLÓGICO RECOMENDADO
 
-* **Backend Framework:** Laravel 11.x (PHP 8.3+) o Node.js (TypeScript) con NestJS / Express.
-* **Frontend Framework:** React 18+ (TypeScript) con TailwindCSS y Shadcn UI o Vue 3 (Options/Composition API).
+* **Backend Framework:** Laravel 11.x (PHP 8.3+) o Node.js con NestJS / Express.
+* **Frontend Framework:** Sveltekit
 * **Base de Datos:** PostgreSQL 16+ con extensión PostGIS (opcional para geolocalización minera) o MySQL 8.0+.
 * **Motor de Tareas / Queues:** Redis (para procesamiento diferido de generación de PDFs, envío de correos y syncing de tasa BCV).
 * **Librerías de Utilidad:**
