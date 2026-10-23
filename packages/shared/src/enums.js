@@ -1,0 +1,32 @@
+// Espejo de los enums de `database/schema.sql`.
+
+export const DOC_TYPES = Object.freeze({
+	RIF_JURIDICO: 'RIF_JURIDICO',
+	RIF_NATURAL: 'RIF_NATURAL',
+	CEDULA: 'CEDULA',
+	PASAPORTE: 'PASAPORTE'
+});
+
+export const TAX_TYPES = Object.freeze({
+	MINERO: 'MINERO',
+	UN_POR_MIL: 'UN_POR_MIL',
+	TIMBRE_FISCAL: 'TIMBRE_FISCAL'
+});
+
+export const PAYMENT_STATUS = Object.freeze({
+	PENDIENTE: 'PENDIENTE',
+	VERIFICADO: 'VERIFICADO',
+	RECHAZADO: 'RECHAZADO'
+});
+
+export const STAMP_STATUS = Object.freeze({
+	ACTIVO: 'ACTIVO',
+	CONSUMIDO: 'CONSUMIDO',
+	ANULADO: 'ANULADO'
+});
+
+export const MINING_ACTIVITIES = Object.freeze({
+	EXTRACCION: 'EXTRACCION',
+	PROCESAMIENTO: 'PROCESAMIENTO',
+	SUBPRODUCTO: 'SUBPRODUCTO'
+});
