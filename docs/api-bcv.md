@@ -1,6 +1,6 @@
 # Tasa oficial BCV (API)
 
-Contrato para el frontend. Cubre la consulta EUR/VED del módulo 04. La emisión de timbres (`POST /stamps/purchase` y el PDF) sigue en `501`.
+Contrato para el frontend. Cubre la consulta EUR/VED del módulo 04. La emisión del timbre está en [`api-stamps.md`](api-stamps.md).
 
 La sesión es la cookie descrita en [`api-auth.md`](api-auth.md). Los errores usan el mismo sobre:
 

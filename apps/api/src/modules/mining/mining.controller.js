@@ -100,6 +100,7 @@ export async function createDeclaration(req, res) {
 	}
 	const taxpayer = await approvedTaxpayer(req);
 	const late = isExtemporaneous(body.periodYear, body.periodMonth);
+	// El subtotal es solo el impuesto. La sanción de 1.000 EUR sale en fineEur y no se suma.
 	const client = await getPool().connect();
 	try {
 		await client.query('BEGIN');

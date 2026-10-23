@@ -236,7 +236,8 @@ describe('persistencia y endpoint', () => {
 				headers: { cookie: contribuyenteCookie, 'content-type': 'application/json' },
 				body: '{}'
 			});
-			assert.equal(stamps.status, 501);
+			assert.equal(stamps.status, 400);
+			assert.equal((await stamps.json()).error.code, 'VALIDATION_ERROR');
 		} finally {
 			client.release();
 		}

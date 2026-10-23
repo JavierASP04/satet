@@ -27,7 +27,10 @@ export const MINING_TAX_RATES = Object.freeze({
 /** Último día del lapso declarativo mensual (Módulo 02, regla del día 11). */
 export const DECLARATION_DEADLINE_DAY = 10;
 
-/** Sanción por extemporaneidad, procesada vía expediente (no se calcula en la planilla). */
+/**
+ * Sanción legal por extemporaneidad, en euros. Se informa como alerta del expediente
+ * y no se suma al subtotal de la planilla de pago.
+ */
 export const EXTEMPORANEOUS_FINE_EUR = 1000;
 
 /** Divisor del impuesto 1 x 1000 (Módulo 03). */

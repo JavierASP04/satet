@@ -7,7 +7,7 @@
 		"dev": "node --watch --env-file-if-exists=../../.env src/server.js",
 		"start": "node --env-file-if-exists=../../.env src/server.js",
 		"check": "find src -name '*.js' -print0 | xargs -0 -n1 node --check",
-		"test": "node --test test/bcv-rate.test.js"
+		"test": "node --test test/*.test.js"
 	},
 	"dependencies": {
 		"@satet/shared": "*",
@@ -15,7 +15,13 @@
 		"cors": "^2.8.5",
 		"express": "^5.2.1",
 		"jsonwebtoken": "^9.0.3",
+		"pdfkit": "^0.20.2",
 		"pg": "^8.16.3",
+		"qrcode": "^1.5.4",
 		"zod": "^4.1.12"
+	},
+	"devDependencies": {
+		"jsqr": "^1.4.0",
+		"pngjs": "^7.0.0"
 	}
 }

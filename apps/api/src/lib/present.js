@@ -1,3 +1,5 @@
+import { EXTEMPORANEOUS_FINE_EUR } from '@satet/shared';
+
 /** @param {unknown} value */
 function toIso(value) {
 	if (!value) return null;
@@ -38,6 +40,33 @@ export function toTaxpayer(row) {
 }
 
 /**
+ * Sanción del expediente, en euros con dos decimales. Cero si la declaración está en término.
+ * No forma parte de `subtotalVed`.
+ * @param {boolean} isExtemporaneous
+ */
+export function miningFineEur(isExtemporaneous) {
+	return (isExtemporaneous ? EXTEMPORANEOUS_FINE_EUR : 0).toFixed(2);
+}
+
+/**
+ * @param {unknown} value
+ * @param {number} scale
+ */
+export function formatFixed(value, scale) {
+	const text = String(value).trim();
+	if (!/^-?\d+(\.\d+)?$/.test(text)) {
+		throw new Error('Monto inválido.');
+	}
+	const negative = text.startsWith('-');
+	const [whole, frac = ''] = (negative ? text.slice(1) : text).split('.');
+	if (frac.length > scale && /[1-9]/.test(frac.slice(scale))) {
+		throw new Error('Monto inválido.');
+	}
+	const formatted = `${whole.replace(/^0+(?=\d)/, '') || '0'}.${frac.padEnd(scale, '0').slice(0, scale)}`;
+	return negative ? `-${formatted}` : formatted;
+}
+
+/**
  * @param {Record<string, any>} row
  * @param {boolean} [includeTaxpayer]
  */
@@ -54,6 +83,7 @@ export function toMiningDeclaration(row, includeTaxpayer = false) {
 		appliedTaxRate: row.applied_tax_rate,
 		subtotalVed: row.subtotal_ved,
 		isExtemporaneous: row.is_extemporaneous,
+		fineEur: miningFineEur(Boolean(row.is_extemporaneous)),
 		declarationDate: toIso(row.declaration_date),
 		status: row.status
 	};
@@ -62,6 +92,36 @@ export function toMiningDeclaration(row, includeTaxpayer = false) {
 		declaration.rifNumber = row.rif_number;
 	}
 	return declaration;
+}
+
+/** @param {Record<string, any>} row */
+function issuedAtFromStamp(row) {
+	if (typeof row.qr_payload === 'string') {
+		try {
+			const parsed = JSON.parse(row.qr_payload);
+			if (typeof parsed.issued_at === 'string') return parsed.issued_at;
+		} catch {
+			// Si el QR no se puede leer, la fecha de la fila sigue sirviendo para mostrar el timbre.
+		}
+	}
+	return toIso(row.created_at);
+}
+
+/** @param {Record<string, any>} row */
+export function toStamp(row) {
+	const issuedAt = issuedAtFromStamp(row);
+	return {
+		id: row.id,
+		uuid: row.uuid_code,
+		rif: row.rif_number,
+		taxpayer: row.company_name,
+		amountEur: formatFixed(row.amount_eur, 2),
+		bcvRate: formatFixed(row.bcv_rate_applied, 4),
+		amountVed: formatFixed(row.amount_ved, 2),
+		issuedAt,
+		status: row.status,
+		qrPayload: row.qr_payload
+	};
 }
 
 /**

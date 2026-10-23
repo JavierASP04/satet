@@ -65,7 +65,7 @@ Público. Cuerpo: `{ "email", "password" }`.
 
 `200` y `Set-Cookie`. Cuerpo: `{ user, taxpayer }`. `taxpayer` es `null` si el usuario no tiene expediente.
 
-Un contribuyente **puede iniciar sesión antes de la aprobación**. La especificación impide declarar y emitir timbres hasta `isApproved: true`; esos módulos siguen en `501`, así que el bloqueo se aplicará cuando se implementen. La respuesta trae `taxpayer.isApproved` para que la interfaz lo respete.
+Un contribuyente **puede iniciar sesión antes de la aprobación**. La especificación impide declarar y emitir timbres hasta `isApproved: true`. Ese bloqueo ya está en minería, en el 1 x 1000 y en la emisión de timbres. La respuesta trae `taxpayer.isApproved` para que la interfaz lo respete.
 
 Correo inexistente, contraseña incorrecta o usuario con `is_active = false`: `401` y el mismo mensaje (`Credenciales inválidas.`).
 
