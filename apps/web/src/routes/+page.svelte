@@ -167,9 +167,10 @@
 
 	article {
 		padding: 1.15rem 1.15rem 1.2rem;
+		border: 1px solid var(--line);
 		border-radius: 1.3rem;
 		background: var(--surface);
-		box-shadow: var(--shadow);
+		box-shadow: 0 18px 40px rgb(58 16 24 / 0.1);
 	}
 
 	article span {

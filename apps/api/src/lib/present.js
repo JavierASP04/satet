@@ -37,6 +37,56 @@ export function toTaxpayer(row) {
 	};
 }
 
+/**
+ * @param {Record<string, any>} row
+ * @param {boolean} [includeTaxpayer]
+ */
+export function toMiningDeclaration(row, includeTaxpayer = false) {
+	const declaration = {
+		id: row.id,
+		taxpayerId: row.taxpayer_id,
+		periodYear: row.period_year,
+		periodMonth: row.period_month,
+		activityType: row.activity_type,
+		materialType: row.material_type,
+		volumeCubicMeters: row.volume_cubic_meters,
+		commercialValuePerUnit: row.commercial_value_per_unit,
+		appliedTaxRate: row.applied_tax_rate,
+		subtotalVed: row.subtotal_ved,
+		isExtemporaneous: row.is_extemporaneous,
+		declarationDate: toIso(row.declaration_date),
+		status: row.status
+	};
+	if (includeTaxpayer) {
+		declaration.companyName = row.company_name;
+		declaration.rifNumber = row.rif_number;
+	}
+	return declaration;
+}
+
+/**
+ * @param {Record<string, any>} row
+ * @param {boolean} [includeTaxpayer]
+ */
+export function toOnePerThousand(row, includeTaxpayer = false) {
+	const declaration = {
+		id: row.id,
+		taxpayerId: row.taxpayer_id,
+		paymentOrderNumber: row.payment_order_number,
+		entityName: row.entity_name,
+		executedAmountVed: row.executed_amount_ved,
+		taxAmountVed: row.tax_amount_ved,
+		executionDate: row.execution_date,
+		status: row.status,
+		createdAt: toIso(row.created_at)
+	};
+	if (includeTaxpayer) {
+		declaration.companyName = row.company_name;
+		declaration.rifNumber = row.rif_number;
+	}
+	return declaration;
+}
+
 /** Instantánea de columnas de `taxpayers` para `audit_logs`, sin datos de acceso. */
 export function taxpayerSnapshot(row) {
 	return {

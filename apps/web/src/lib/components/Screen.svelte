@@ -24,8 +24,10 @@
 
 <style>
 	.head {
-		max-width: 40rem;
-		margin-bottom: 1.6rem;
+		max-width: 44rem;
+		margin-bottom: 1.35rem;
+		padding-bottom: 1.15rem;
+		border-bottom: 1px solid var(--line);
 	}
 
 	.eyebrow {

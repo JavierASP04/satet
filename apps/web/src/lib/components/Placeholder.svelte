@@ -6,36 +6,38 @@
 </script>
 
 <section>
-	<p class="pill">Próximamente</p>
+	<p class="kicker">Próximamente</p>
 	<h2>{title}</h2>
 	<p class="text">{text}</p>
 </section>
 
 <style>
 	section {
-		max-width: 34rem;
-		padding: 1.6rem 1.5rem;
-		border-radius: 1.6rem;
-		background: var(--surface);
-		box-shadow: var(--shadow);
+		display: grid;
+		justify-items: start;
+		gap: 0.35rem;
+		max-width: 36rem;
+		padding: 1.45rem 1.4rem 1.5rem 1.55rem;
+		border: 1px solid var(--line);
+		border-radius: 1.5rem;
+		background:
+			linear-gradient(var(--wine), var(--wine)) 0 0 / 4px 100% no-repeat,
+			var(--surface);
+		box-shadow: 0 12px 32px rgb(58 16 24 / 0.06);
 	}
 
-	.pill {
-		display: inline-flex;
+	.kicker {
 		margin: 0;
-		padding: 0.25rem 0.7rem;
-		border-radius: 999px;
-		background: var(--wine);
-		color: #fff;
+		color: var(--muted);
 		font-size: 0.72rem;
 		font-weight: 700;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
 
 	h2 {
-		margin: 0.8rem 0 0.4rem;
-		font-size: 1.55rem;
+		margin: 0.35rem 0 0.1rem;
+		font-size: 1.7rem;
 	}
 
 	.text {

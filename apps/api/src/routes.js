@@ -9,12 +9,14 @@ import { reportsRouter } from './modules/reports/reports.routes.js';
 import { sarenRouter } from './modules/saren/saren.routes.js';
 import { stampsRouter } from './modules/stamps/stamps.routes.js';
 import { taxpayersRouter } from './modules/taxpayers/taxpayers.routes.js';
+import { usersRouter } from './modules/users/users.routes.js';
 
 export const apiRouter = Router();
 
 // Módulo 01
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/taxpayers', taxpayersRouter);
+apiRouter.use('/users', usersRouter);
 // Módulo 02
 apiRouter.use('/mining', miningRouter);
 // Módulo 03
