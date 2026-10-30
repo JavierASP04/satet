@@ -145,4 +145,5 @@ Rechazar una solicitud pendiente (`PATCH /api/v1/taxpayers/:id/approve` con `{ "
 - «Aprobado» es el estado `VERIFICADO` que ya existía.
 - Los números de cuenta del esquema son ficticios.
 - El SAREN consume el QR una sola vez. El contrato está en [`api-saren.md`](api-saren.md). Un timbre `CONSUMIDO` no se vuelve a verificar.
-- Siguen pendientes el tabulador y las exoneraciones, hasta que exista la tabla legal de montos, los reportes del POA y el cambio visual de toda la aplicación. Las planillas sí llevan el texto de la Gobernación en verde y el aviso en rojo.
+- Los reportes del POA leen los pagos ya verificados. La meta proyectada no está en la especificación y no se inventa. El contrato está en [`api-reports.md`](api-reports.md).
+- Siguen pendientes el tabulador y las exoneraciones, hasta que exista la tabla legal de montos, y el cambio visual de toda la aplicación. Las planillas sí llevan el texto de la Gobernación en verde y el aviso en rojo.
