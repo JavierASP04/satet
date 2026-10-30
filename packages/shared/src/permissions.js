@@ -7,6 +7,10 @@ export const PERMISSIONS = Object.freeze({
 	DECLARACIONES_CREAR: 'declaraciones:crear',
 	/** No figura en la matriz; cubre los endpoints marcados "(Recaudación)" / "(Analista)". */
 	DECLARACIONES_SUPERVISAR: 'declaraciones:supervisar',
+	/** Aprobar o rechazar declaraciones, cargas y regalías. Solo el administrador. */
+	DECLARACIONES_RESOLVER: 'declaraciones:resolver',
+	/** Alta de cuentas institucionales. Solo el administrador. */
+	CUENTAS_GESTIONAR: 'cuentas:gestionar',
 	TIMBRES_COMPRAR: 'timbres:comprar',
 	PAGOS_REGISTRAR: 'pagos:registrar',
 	PAGOS_CONCILIAR: 'pagos:conciliar',
@@ -28,7 +32,6 @@ export const ROLE_PERMISSIONS = Object.freeze({
 	]),
 	[ROLES.ANALISTA_RECAUDACION]: Object.freeze([
 		P.PERFIL_GESTIONAR,
-		P.CONTRIBUYENTES_APROBAR,
 		P.DECLARACIONES_SUPERVISAR,
 		P.DASHBOARD_POA
 	]),

@@ -20,11 +20,13 @@
 		{ value: DOC_TYPES.PASAPORTE, label: 'Pasaporte' }
 	];
 
-	const documentLabels = Object.fromEntries(documentOptions.map((option) => [option.value, option.label]));
+	const documentLabels = Object.fromEntries(
+		documentOptions.map((option) => [option.value, option.label])
+	);
 
 	const roleSummaries = {
 		ADMIN_SISTEMA: 'Administra el sistema y puede usar todos los módulos.',
-		ANALISTA_RECAUDACION: 'Aprueba expedientes, supervisa declaraciones y consulta el tablero.',
+		ANALISTA_RECAUDACION: 'Supervisa declaraciones y consulta el tablero.',
 		ANALISTA_TESORERIA: 'Concilia pagos y consulta el tablero de recaudación.',
 		VERIFICADOR_SAREN: 'Verifica y consume timbres fiscales.'
 	};
@@ -112,7 +114,10 @@
 			<PropertyList title="Cuenta" rows={staffAccount} />
 			<section class="editor">
 				<h2>Accesos</h2>
-				<p class="hint">{roleSummaries[data.user.role] ?? 'Cuenta institucional, sin expediente de contribuyente.'}</p>
+				<p class="hint">
+					{roleSummaries[data.user.role] ??
+						'Cuenta institucional, sin expediente de contribuyente.'}
+				</p>
 				<ul class="access">
 					{#each accessGroups as group (group.label)}
 						<li>
@@ -148,7 +153,13 @@
 						options={documentOptions}
 						value={field('docType')}
 					/>
-					<TextField label="RIF" name="rifNumber" required placeholder="J-12345678-9" value={field('rifNumber')} />
+					<TextField
+						label="RIF"
+						name="rifNumber"
+						required
+						placeholder="J-12345678-9"
+						value={field('rifNumber')}
+					/>
 					<TextField
 						label="Razón social"
 						name="companyName"
@@ -172,7 +183,13 @@
 						span={2}
 						value={field('fiscalAddress')}
 					/>
-					<TextField label="Teléfono" name="phoneNumber" required maxlength="20" value={field('phoneNumber')} />
+					<TextField
+						label="Teléfono"
+						name="phoneNumber"
+						required
+						maxlength="20"
+						value={field('phoneNumber')}
+					/>
 					<TextField
 						label="Representante legal"
 						name="legalRepresentativeName"
@@ -189,7 +206,8 @@
 						value={field('legalRepresentativeDna')}
 					/>
 					<div class="actions">
-						<Button disabled={submitting}>{submitting ? 'Guardando…' : 'Guardar expediente'}</Button>
+						<Button disabled={submitting}>{submitting ? 'Guardando…' : 'Guardar expediente'}</Button
+						>
 					</div>
 				</Form>
 			</section>

@@ -19,7 +19,7 @@
 <Screen
 	module="02"
 	title="Declaraciones extemporáneas"
-	description="Presentadas después del día 10, o de un período distinto al mes anterior. La multa de 1.000 EUR no se calcula en esta pantalla."
+	description="Presentadas después del día 10, o de un período distinto al mes anterior. Solo se marca el aviso."
 	ready
 >
 	<div class="stack">
@@ -29,7 +29,7 @@
 			<section class="empty">
 				<p class="kicker">Fuera de lapso</p>
 				<h2>Sin extemporáneas</h2>
-				<p>No hay declaraciones presentadas fuera del lapso.</p>
+				<p>No hay declaraciones fuera de tiempo.</p>
 			</section>
 		{:else}
 			<section class="board">
@@ -45,8 +45,8 @@
 							<dd>{figure(total)} VED</dd>
 						</div>
 						<div>
-							<dt>Multa</dt>
-							<dd>Se tramita por expediente</dd>
+							<dt>Aviso</dt>
+							<dd class="late">Fuera de tiempo</dd>
 						</div>
 					</dl>
 				</div>
@@ -70,7 +70,10 @@
 								<strong>{declaration.companyName}</strong>
 								<div class="sub">{declaration.rifNumber}</div>
 							</td>
-							<td>{periodLabel(declaration.periodYear, declaration.periodMonth)}</td>
+							<td>
+								{periodLabel(declaration.periodYear, declaration.periodMonth)}
+								<span class="late">Fuera de tiempo</span>
+							</td>
 							<td>{ACTIVITY_LABELS[declaration.activityType] ?? declaration.activityType}</td>
 							<td>{declaration.materialType}</td>
 							<td class="num">{money(declaration.subtotalVed)}</td>
@@ -199,9 +202,16 @@
 		}
 	}
 
+	.late {
+		display: block;
+		margin-top: 0.2rem;
+		color: #9b1c1c;
+		font-size: 1.15rem;
+		font-weight: 800;
+	}
+
 	.sub {
 		color: var(--muted);
 		font-size: 0.88rem;
 	}
-
 </style>

@@ -4,7 +4,11 @@ import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
 import { validate } from '../../middleware/validate.js';
 import * as controller from './mining.controller.js';
-import { createDeclarationSchema } from './mining.schema.js';
+import {
+	createDeclarationSchema,
+	declarationIdParamsSchema,
+	resolveSchema
+} from './mining.schema.js';
 
 export const miningRouter = Router();
 
@@ -21,7 +25,23 @@ miningRouter.get(
 	authorize(PERMISSIONS.DECLARACIONES_CREAR),
 	controller.listMyDeclarations
 );
-// Lectura: dueño de la declaración o analista (se resuelve en el controlador).
+miningRouter.get(
+	'/declarations/pending',
+	authorize(PERMISSIONS.DECLARACIONES_RESOLVER),
+	controller.listPending
+);
+miningRouter.get(
+	'/declarations/:id/pdf',
+	validate(declarationIdParamsSchema, 'params'),
+	controller.downloadPdf
+);
+miningRouter.post(
+	'/declarations/:id/resolve',
+	authorize(PERMISSIONS.DECLARACIONES_RESOLVER),
+	validate(declarationIdParamsSchema, 'params'),
+	validate(resolveSchema),
+	controller.resolveDeclaration
+);
 miningRouter.get('/declarations/:id', controller.getDeclaration);
 miningRouter.get(
 	'/extemporaneous',

@@ -1,18 +1,20 @@
 <script>
+	import { enhance } from '$app/forms';
+	import { hasPermission, PERMISSIONS } from '@satet/shared';
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import TextField from '#lib/components/TextField.svelte';
 	import { ACTIVITY_LABELS, STATUS_LABELS, money, periodLabel, volume, when } from '#lib/mining.js';
 
-	let { data } = $props();
+	let { data, form } = $props();
 
 	const declaration = $derived(data.declaration);
-	const activity = $derived(
-		declaration ? (ACTIVITY_LABELS[declaration.activityType] ?? declaration.activityType) : ''
-	);
+	const lines = $derived(Array.isArray(declaration?.lines) ? declaration.lines : []);
 	const payLabel = $derived(
 		declaration ? (STATUS_LABELS[declaration.status] ?? declaration.status) : ''
 	);
+	const canResolve = $derived(hasPermission(data.user?.role, PERMISSIONS.DECLARACIONES_RESOLVER));
 
 	/** @param {string} status */
 	function payTone(status) {
@@ -25,10 +27,13 @@
 <Screen
 	module="02"
 	title="Detalle de declaración minera"
-	description="Declaración jurada presentada y su estado de pago."
+	description="Declaración presentada. La planilla se imprime cuando el administrador la aprueba."
 	ready
 >
 	<div class="stack">
+		{#if form?.message}
+			<Alert tone={form.ok ? 'ok' : 'danger'}>{form.message}</Alert>
+		{/if}
 		{#if data.error}
 			<Alert>{data.error}</Alert>
 		{:else if declaration}
@@ -38,35 +43,40 @@
 						<p class="kicker">Período</p>
 						<h2>{periodLabel(declaration.periodYear, declaration.periodMonth)}</h2>
 						<p class="pill" class:late={declaration.isExtemporaneous}>
-							{declaration.isExtemporaneous ? 'Extemporánea' : 'En término'}
+							{declaration.isExtemporaneous ? 'Fuera de tiempo' : 'En término'}
 						</p>
+						{#if declaration.isExtemporaneous}
+							<p class="late-banner">Fuera de tiempo</p>
+						{/if}
 					</header>
 
 					<section>
-						<h3>Actividad</h3>
-						<div class="activity">
-							<span>{activity}</span>
-							<strong>{declaration.appliedTaxRate}%</strong>
-						</div>
-						<p class="material">{declaration.materialType}</p>
-					</section>
-
-					<section>
-						<h3>Base de cálculo</h3>
-						<dl>
-							<div>
-								<dt>Volumen</dt>
-								<dd>{volume(declaration.volumeCubicMeters)}</dd>
+						<h3>Materiales</h3>
+						{#each lines as line, index (index)}
+							<div class="activity">
+								<span>{ACTIVITY_LABELS[line.activityType] ?? line.activityType}</span>
+								<strong>{line.appliedTaxRate}%</strong>
 							</div>
-							<div>
-								<dt>Valor por m³</dt>
-								<dd>{money(declaration.commercialValuePerUnit)}</dd>
-							</div>
-							<div>
-								<dt>Presentada</dt>
-								<dd>{when(declaration.declarationDate)}</dd>
-							</div>
-						</dl>
+							<p class="material">{line.materialType}</p>
+							<dl>
+								<div>
+									<dt>Volumen</dt>
+									<dd>{volume(line.volumeCubicMeters)}</dd>
+								</div>
+								<div>
+									<dt>Valor por m³</dt>
+									<dd>{money(line.commercialValuePerUnit)}</dd>
+								</div>
+								<div>
+									<dt>Subtotal</dt>
+									<dd>{money(line.subtotalVed)}</dd>
+								</div>
+							</dl>
+						{/each}
+						<p class="when">Presentada {when(declaration.declarationDate)}</p>
+						{#if declaration.bankReferenceNumber}
+							<p class="when">Referencia {declaration.bankReferenceNumber}</p>
+						{/if}
 					</section>
 
 					{#if declaration.companyName}
@@ -82,15 +92,36 @@
 					<p class="kicker">Estado de pago</p>
 					<p class="pay {payTone(declaration.status)}">{payLabel}</p>
 					<div class="total">
-						<span>Subtotal</span>
-						<strong>{money(declaration.subtotalVed)}</strong>
-						<p>
-							{volume(declaration.volumeCubicMeters)} × {money(declaration.commercialValuePerUnit)} × {declaration.appliedTaxRate}%
-						</p>
+						<span>Total</span>
+						<strong>{money(declaration.totalVed ?? declaration.subtotalVed)}</strong>
+						<p>{lines.length === 1 ? '1 material' : `${lines.length} materiales`}</p>
 					</div>
+					{#if declaration.status === 'VERIFICADO'}
+						<Button href="/mineria/{declaration.id}/planilla">Imprimir planilla</Button>
+					{:else if declaration.status === 'PENDIENTE'}
+						<p class="note">
+							La planilla queda disponible cuando el administrador apruebe la declaración.
+						</p>
+					{/if}
+					{#if canResolve && declaration.status === 'PENDIENTE'}
+						<form method="POST" action="?/resolve" use:enhance>
+							<input type="hidden" name="decision" value="APROBAR" />
+							<Button>Aprobar</Button>
+						</form>
+						<form class="reject" method="POST" action="?/resolve" use:enhance>
+							<input type="hidden" name="decision" value="RECHAZAR" />
+							<TextField
+								label="Motivo del rechazo"
+								name="rejectionReason"
+								required
+								maxlength="500"
+							/>
+							<Button variant="ghost">Rechazar</Button>
+						</form>
+					{/if}
 					<p class="note">
 						{#if declaration.isExtemporaneous}
-							Presentada fuera del lapso. La sanción se tramita por expediente.
+							Presentada fuera del lapso. No hay multa dentro del sistema.
 						{:else}
 							Presentada dentro de los primeros 10 días del mes.
 						{/if}
@@ -296,6 +327,28 @@
 
 	.actions {
 		display: flex;
+	}
+
+	.late-banner {
+		margin: 0.35rem 0 0;
+		color: #9b1c1c;
+		font-size: 1.7rem;
+		font-weight: 800;
+		letter-spacing: -0.03em;
+	}
+
+	.reject {
+		display: grid;
+		gap: 0.6rem;
+	}
+
+	.when {
+		margin: 0.35rem 0 0;
+		color: var(--muted);
+	}
+
+	form {
+		margin: 0;
 	}
 
 	@media (max-width: 980px) {

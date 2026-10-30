@@ -3,11 +3,14 @@ import { DECLARATION_DEADLINE_DAY, MINING_ACTIVITIES, MINING_TAX_RATES } from '@
 export const ACTIVITY_OPTIONS = [
 	{ value: MINING_ACTIVITIES.EXTRACCION, label: 'Extracción' },
 	{ value: MINING_ACTIVITIES.PROCESAMIENTO, label: 'Procesamiento' },
-	{ value: MINING_ACTIVITIES.SUBPRODUCTO, label: 'Subproducto' }
+	{ value: MINING_ACTIVITIES.SUBPRODUCTO, label: 'Producto' },
+	{ value: MINING_ACTIVITIES.PREMEZCLADO, label: 'Premezclado' }
 ];
 
 /** @type {Record<string, string>} */
-export const ACTIVITY_LABELS = Object.fromEntries(ACTIVITY_OPTIONS.map((option) => [option.value, option.label]));
+export const ACTIVITY_LABELS = Object.fromEntries(
+	ACTIVITY_OPTIONS.map((option) => [option.value, option.label])
+);
 
 /** @type {Record<string, string>} */
 export const STATUS_LABELS = {
@@ -18,7 +21,9 @@ export const STATUS_LABELS = {
 
 /** @param {number} month */
 export function monthName(month) {
-	const name = new Intl.DateTimeFormat('es-VE', { month: 'long' }).format(new Date(2026, month - 1, 1));
+	const name = new Intl.DateTimeFormat('es-VE', { month: 'long' }).format(
+		new Date(2026, month - 1, 1)
+	);
 	return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
@@ -46,7 +51,9 @@ export function volume(value) {
 /** @param {string | null | undefined} value */
 export function when(value) {
 	if (!value) return '—';
-	return new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+	return new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium', timeStyle: 'short' }).format(
+		new Date(value)
+	);
 }
 
 /** Fecha civil en Caracas. */

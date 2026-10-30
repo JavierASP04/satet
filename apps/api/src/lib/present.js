@@ -1,5 +1,3 @@
-import { EXTEMPORANEOUS_FINE_EUR } from '@satet/shared';
-
 /** @param {unknown} value */
 function toIso(value) {
 	if (!value) return null;
@@ -40,15 +38,6 @@ export function toTaxpayer(row) {
 }
 
 /**
- * Sanción del expediente, en euros con dos decimales. Cero si la declaración está en término.
- * No forma parte de `subtotalVed`.
- * @param {boolean} isExtemporaneous
- */
-export function miningFineEur(isExtemporaneous) {
-	return (isExtemporaneous ? EXTEMPORANEOUS_FINE_EUR : 0).toFixed(2);
-}
-
-/**
  * @param {unknown} value
  * @param {number} scale
  */
@@ -66,26 +55,43 @@ export function formatFixed(value, scale) {
 	return negative ? `-${formatted}` : formatted;
 }
 
+/** @param {Record<string, any>} line */
+function toMiningLine(line) {
+	return {
+		activityType: line.activity_type,
+		materialType: line.material_type,
+		volumeCubicMeters: line.volume_cubic_meters,
+		commercialValuePerUnit: line.commercial_value_per_unit,
+		appliedTaxRate: line.applied_tax_rate,
+		subtotalVed: line.subtotal_ved
+	};
+}
+
 /**
  * @param {Record<string, any>} row
  * @param {boolean} [includeTaxpayer]
  */
 export function toMiningDeclaration(row, includeTaxpayer = false) {
+	const lines = Array.isArray(row.lines) ? row.lines.map(toMiningLine) : [];
+	const first = lines[0];
 	const declaration = {
 		id: row.id,
 		taxpayerId: row.taxpayer_id,
 		periodYear: row.period_year,
 		periodMonth: row.period_month,
-		activityType: row.activity_type,
-		materialType: row.material_type,
-		volumeCubicMeters: row.volume_cubic_meters,
-		commercialValuePerUnit: row.commercial_value_per_unit,
-		appliedTaxRate: row.applied_tax_rate,
-		subtotalVed: row.subtotal_ved,
+		lines,
+		activityType: first?.activityType ?? null,
+		materialType: first?.materialType ?? null,
+		volumeCubicMeters: first?.volumeCubicMeters ?? null,
+		commercialValuePerUnit: first?.commercialValuePerUnit ?? null,
+		appliedTaxRate: first?.appliedTaxRate ?? null,
+		subtotalVed: row.total_ved,
+		totalVed: row.total_ved,
 		isExtemporaneous: row.is_extemporaneous,
-		fineEur: miningFineEur(Boolean(row.is_extemporaneous)),
+		bankReferenceNumber: row.bank_reference_number,
 		declarationDate: toIso(row.declaration_date),
-		status: row.status
+		status: row.status,
+		rejectionReason: row.rejection_reason ?? null
 	};
 	if (includeTaxpayer) {
 		declaration.companyName = row.company_name;
@@ -131,6 +137,7 @@ export function toStamp(row) {
 export function toOnePerThousand(row, includeTaxpayer = false) {
 	const declaration = {
 		id: row.id,
+		filingId: row.filing_id ?? null,
 		taxpayerId: row.taxpayer_id,
 		paymentOrderNumber: row.payment_order_number,
 		entityName: row.entity_name,
@@ -138,6 +145,7 @@ export function toOnePerThousand(row, includeTaxpayer = false) {
 		taxAmountVed: row.tax_amount_ved,
 		executionDate: row.execution_date,
 		status: row.status,
+		totalTaxVed: row.total_tax_ved ?? null,
 		createdAt: toIso(row.created_at)
 	};
 	if (includeTaxpayer) {

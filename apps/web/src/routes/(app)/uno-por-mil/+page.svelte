@@ -1,11 +1,15 @@
 <script>
+	import { enhance } from '$app/forms';
+	import { hasPermission, PERMISSIONS } from '@satet/shared';
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import Screen from '#lib/components/Screen.svelte';
 	import { STATUS_LABELS, formatCalendarDate, formatVed } from '#lib/one-per-thousand.js';
 
-	let { data } = $props();
+	let { data, form } = $props();
+
+	const canResolve = $derived(hasPermission(data.user?.role, PERMISSIONS.DECLARACIONES_RESOLVER));
 
 	const totalTax = $derived(
 		data.declarations.reduce((sum, row) => sum + Number(row.taxAmountVed || 0), 0)
@@ -35,6 +39,9 @@
 	ready
 >
 	<div class="stack">
+		{#if form?.message}
+			<Alert tone={form.ok ? 'ok' : 'danger'}>{form.message}</Alert>
+		{/if}
 		{#if data.error}
 			{#if canLoad}
 				<div class="toolbar">
@@ -50,7 +57,7 @@
 					{#if canLoad}
 						Todavía no has registrado órdenes de pago.
 					{:else if data.taxpayer}
-						Cuando Recaudación apruebe el expediente podrás cargar órdenes de pago.
+						Cuando el administrador apruebe el expediente podrás cargar órdenes de pago.
 					{:else if data.scope === 'all'}
 						No hay retenciones registradas.
 					{:else}
@@ -100,6 +107,7 @@
 						<th>Impuesto</th>
 						<th>Ejecución</th>
 						<th>Estado</th>
+						<th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -117,7 +125,22 @@
 							<td class="num tax">{formatVed(row.taxAmountVed)}</td>
 							<td class="when">{formatCalendarDate(row.executionDate)}</td>
 							<td>
-								<span class="pill {tone(row.status)}">{STATUS_LABELS[row.status] ?? row.status}</span>
+								<span class="pill {tone(row.status)}"
+									>{STATUS_LABELS[row.status] ?? row.status}</span
+								>
+							</td>
+							<td>
+								{#if row.filingId && data.declarations.findIndex((item) => item.filingId === row.filingId) === data.declarations.indexOf(row)}
+									{#if row.status === 'VERIFICADO'}
+										<a href="/uno-por-mil/cargas/{row.filingId}/planilla">Planilla</a>
+									{:else if canResolve && row.status === 'PENDIENTE'}
+										<form method="POST" action="?/resolve" use:enhance>
+											<input type="hidden" name="filingId" value={row.filingId} />
+											<input type="hidden" name="decision" value="APROBAR" />
+											<Button>Aprobar</Button>
+										</form>
+									{/if}
+								{/if}
 							</td>
 						</tr>
 					{/each}

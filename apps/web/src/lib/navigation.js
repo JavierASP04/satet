@@ -31,10 +31,16 @@ export const NAVIGATION = [
 		items: [
 			{ label: 'Mis declaraciones', href: '/mineria', permission: P.DECLARACIONES_CREAR },
 			{ label: 'Nueva declaración', href: '/mineria/nueva', permission: P.DECLARACIONES_CREAR },
+			{ label: 'Regalías', href: '/mineria/regalias', permission: P.DECLARACIONES_CREAR },
 			{
 				label: 'Extemporáneas',
 				href: '/mineria/extemporaneas',
 				permission: P.DECLARACIONES_SUPERVISAR
+			},
+			{
+				label: 'Por aprobar',
+				href: '/mineria/por-aprobar',
+				permission: P.DECLARACIONES_RESOLVER
 			}
 		]
 	},

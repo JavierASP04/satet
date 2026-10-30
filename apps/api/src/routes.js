@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { auditRouter } from './modules/audit/audit.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { bankAccountsRouter } from './modules/bank-accounts/bank-accounts.routes.js';
 import { bcvRateRouter } from './modules/bcv-rate/bcv-rate.routes.js';
 import { miningRouter } from './modules/mining/mining.routes.js';
 import { onePerThousandRouter } from './modules/one-per-thousand/one-per-thousand.routes.js';
 import { paymentsRouter } from './modules/payments/payments.routes.js';
 import { reportsRouter } from './modules/reports/reports.routes.js';
+import { royaltiesRouter } from './modules/royalties/royalties.routes.js';
 import { sarenRouter } from './modules/saren/saren.routes.js';
 import { stampsRouter } from './modules/stamps/stamps.routes.js';
 import { taxpayersRouter } from './modules/taxpayers/taxpayers.routes.js';
@@ -19,6 +21,8 @@ apiRouter.use('/taxpayers', taxpayersRouter);
 apiRouter.use('/users', usersRouter);
 // Módulo 02
 apiRouter.use('/mining', miningRouter);
+apiRouter.use('/royalties', royaltiesRouter);
+apiRouter.use('/bank-accounts', bankAccountsRouter);
 // Módulo 03
 apiRouter.use('/one-per-thousand', onePerThousandRouter);
 // Módulo 04

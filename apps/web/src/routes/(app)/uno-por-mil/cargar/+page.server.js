@@ -1,11 +1,18 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { apiFetch, readApiError } from '#lib/server/api.js';
+import { readVoucherField, text } from '#lib/server/payment.js';
 import { sessionHeaders } from '#lib/server/session.js';
 
-/** @param {FormData} data @param {string} name */
-function text(data, name) {
-	return String(data.get(name) ?? '').trim();
-}
+export const load = async ({ fetch, cookies, parent }) => {
+	const { taxpayer } = await parent();
+	if (!taxpayer?.isApproved) return { accounts: [] };
+	const response = await apiFetch(fetch, '/bank-accounts?taxType=UN_POR_MIL', {
+		headers: sessionHeaders(cookies)
+	});
+	if (!response.ok) return { accounts: [] };
+	const body = await response.json();
+	return { accounts: body.accounts ?? [] };
+};
 
 /** @param {Response} response @param {string} fallback */
 async function failureMessage(response, fallback) {
@@ -22,8 +29,14 @@ export const actions = {
 			paymentOrderNumber: text(data, 'paymentOrderNumber'),
 			entityName: text(data, 'entityName'),
 			executedAmountVed: text(data, 'executedAmountVed'),
-			executionDate: text(data, 'executionDate')
+			executionDate: text(data, 'executionDate'),
+			bankReferenceNumber: text(data, 'bankReferenceNumber'),
+			bankAccountId: text(data, 'bankAccountId')
 		};
+		const voucherRead = await readVoucherField(data);
+		if (voucherRead.error) {
+			return fail(400, { mode: 'single', values, message: voucherRead.error });
+		}
 
 		let response;
 		try {
@@ -31,8 +44,13 @@ export const actions = {
 				method: 'POST',
 				headers: sessionHeaders(cookies),
 				body: JSON.stringify({
-					...values,
-					executedAmountVed: Number(values.executedAmountVed)
+					paymentOrderNumber: values.paymentOrderNumber,
+					entityName: values.entityName,
+					executedAmountVed: Number(values.executedAmountVed),
+					executionDate: values.executionDate,
+					bankReferenceNumber: values.bankReferenceNumber,
+					bankAccountId: values.bankAccountId,
+					voucher: voucherRead.voucher
 				})
 			});
 		} catch {
@@ -65,9 +83,19 @@ export const actions = {
 		const filled = orders.filter(
 			(order) => order.paymentOrderNumber || order.entityName || order.executedAmountVed
 		);
+		const values = {
+			bankReferenceNumber: text(data, 'bankReferenceNumber'),
+			bankAccountId: text(data, 'bankAccountId')
+		};
+		const voucherRead = await readVoucherField(data);
 
-		if (filled.length === 0) {
-			return fail(400, { mode: 'batch', orders, message: 'Agrega al menos una orden.' });
+		if (filled.length === 0 || voucherRead.error) {
+			return fail(400, {
+				mode: 'batch',
+				orders,
+				values,
+				message: voucherRead.error || 'Agrega al menos una orden.'
+			});
 		}
 
 		let response;
@@ -81,17 +109,26 @@ export const actions = {
 						entityName: order.entityName,
 						executedAmountVed: Number(order.executedAmountVed),
 						executionDate: order.executionDate
-					}))
+					})),
+					bankReferenceNumber: values.bankReferenceNumber,
+					bankAccountId: values.bankAccountId,
+					voucher: voucherRead.voucher
 				})
 			});
 		} catch {
-			return fail(503, { mode: 'batch', orders: filled, message: 'No se pudo contactar la API.' });
+			return fail(503, {
+				mode: 'batch',
+				orders: filled,
+				values,
+				message: 'No se pudo contactar la API.'
+			});
 		}
 
 		if (!response.ok) {
 			return fail(response.status, {
 				mode: 'batch',
 				orders: filled,
+				values,
 				message: await failureMessage(response, 'No se pudo registrar la carga.')
 			});
 		}

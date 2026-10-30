@@ -1,20 +1,20 @@
 <script>
+	import { untrack } from 'svelte';
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import Form from '#lib/components/Form.svelte';
+	import PaymentFields from '#lib/components/PaymentFields.svelte';
 	import Screen from '#lib/components/Screen.svelte';
 	import SelectField from '#lib/components/SelectField.svelte';
 	import TextField from '#lib/components/TextField.svelte';
 	import {
-		ACTIVITY_LABELS,
 		ACTIVITY_OPTIONS,
 		isExtemporaneousSelection,
 		money,
 		monthName,
 		periodLabel,
 		previousPeriod,
-		rateFor,
-		volume
+		rateFor
 	} from '#lib/mining.js';
 
 	let { data, form } = $props();
@@ -26,8 +26,8 @@
 		label: monthName(index + 1)
 	}));
 	const activities = ACTIVITY_OPTIONS.map((option) => ({
-		...option,
-		rate: rateFor(option.value)
+		value: option.value,
+		label: `${option.label} (${rateFor(option.value)}%)`
 	}));
 
 	/** @param {string} name @param {string} fallback */
@@ -36,20 +36,48 @@
 		return value == null || value === '' ? fallback : value;
 	}
 
-	let periodYear = $state(field('periodYear', String(expected.year)));
-	let periodMonth = $state(field('periodMonth', String(expected.month)));
-	let activityType = $state(field('activityType', ACTIVITY_OPTIONS[0].value));
-	let volumeCubicMeters = $state(field('volumeCubicMeters', ''));
-	let commercialValuePerUnit = $state(field('commercialValuePerUnit', ''));
+	/** @param {Record<string, string>} [source] */
+	function blankLine(source) {
+		return {
+			activityType: source?.activityType || ACTIVITY_OPTIONS[0].value,
+			materialType: source?.materialType || '',
+			volumeCubicMeters: source?.volumeCubicMeters || '',
+			commercialValuePerUnit: source?.commercialValuePerUnit || ''
+		};
+	}
+
+	let periodYear = $state(untrack(() => field('periodYear', String(expected.year))));
+	let periodMonth = $state(untrack(() => field('periodMonth', String(expected.month))));
+	let lines = $state(
+		untrack(() =>
+			Array.isArray(form?.lines) && form.lines.length > 0
+				? form.lines.map((line) => blankLine(line))
+				: [blankLine()]
+		)
+	);
 	let submitting = $state(false);
 
-	const rate = $derived(rateFor(activityType));
-	const volumeAmount = $derived(Number(volumeCubicMeters));
-	const unitPrice = $derived(Number(commercialValuePerUnit));
-	const estimate = $derived.by(() => {
+	/** @param {number} index @param {string} key @param {string} value */
+	function updateLine(index, key, value) {
+		lines[index] = { ...lines[index], [key]: value };
+	}
+
+	/** @param {{ activityType: string, volumeCubicMeters: string, commercialValuePerUnit: string }} line */
+	function lineEstimate(line) {
+		const rate = rateFor(line.activityType);
+		const volumeAmount = Number(line.volumeCubicMeters);
+		const unitPrice = Number(line.commercialValuePerUnit);
 		if (!rate || !(volumeAmount > 0) || !(unitPrice > 0)) return null;
 		return Math.round(((volumeAmount * unitPrice * rate) / 100) * 100) / 100;
-	});
+	}
+
+	const estimate = $derived(
+		lines.reduce((sum, line) => {
+			const value = lineEstimate(line);
+			return value == null ? sum : sum + value;
+		}, 0)
+	);
+	const estimatedCount = $derived(lines.filter((line) => lineEstimate(line) != null).length);
 	const late = $derived(isExtemporaneousSelection(Number(periodYear), Number(periodMonth)));
 	const canDeclare = $derived(Boolean(data.taxpayer?.isApproved));
 </script>
@@ -57,14 +85,15 @@
 <Screen
 	module="02"
 	title="Nueva declaración minera"
-	description="El mes anterior se declara del día 1 al 10. El resumen se actualiza con lo que indicas."
+	description="Varios materiales en una misma declaración. El mes anterior se declara del día 1 al 10."
 	ready
 >
 	{#if !data.taxpayer}
 		<Alert>Esta cuenta no tiene un expediente de contribuyente.</Alert>
 	{:else if !canDeclare}
 		<Alert tone="warn">
-			El expediente debe estar aprobado para presentar declaraciones. Recaudación todavía no lo ha aprobado.
+			El expediente debe estar aprobado para presentar declaraciones. El administrador todavía no lo
+			ha aprobado.
 		</Alert>
 	{:else}
 		<div class="composer">
@@ -75,6 +104,7 @@
 				<section class="editor">
 					<Form
 						method="POST"
+						enctype="multipart/form-data"
 						submit={() => {
 							submitting = true;
 							return async ({ update }) => {
@@ -106,56 +136,93 @@
 						</fieldset>
 
 						<fieldset>
-							<legend>Actividad</legend>
-							<div class="choices">
-								{#each activities as activity (activity.value)}
-									<label class:selected={activityType === activity.value}>
-										<input type="radio" name="activityType" value={activity.value} bind:group={activityType} required />
-										<span>{activity.label}</span>
-										<strong>{activity.rate}%</strong>
-									</label>
+							<legend>Materiales</legend>
+							<div class="lines">
+								{#each lines as line, index (index)}
+									{@const lineTotal = lineEstimate(line)}
+									<article class="line">
+										<div class="line-head">
+											<p><span class="index">{index + 1}</span> Material {index + 1}</p>
+											<div class="line-tools">
+												{#if lineTotal != null}
+													<span class="chip">{money(lineTotal)}</span>
+												{/if}
+												{#if lines.length > 1}
+													<button
+														type="button"
+														onclick={() => (lines = lines.filter((_, item) => item !== index))}
+													>
+														Quitar
+													</button>
+												{/if}
+											</div>
+										</div>
+										<SelectField
+											label="Actividad"
+											name="activityType"
+											required
+											options={activities}
+											value={line.activityType}
+											onchange={(event) =>
+												updateLine(index, 'activityType', event.currentTarget.value)}
+										/>
+										<TextField
+											label="Material"
+											name="materialType"
+											required
+											maxlength="100"
+											placeholder="Arena, grava, bloques…"
+											value={line.materialType}
+											oninput={(event) =>
+												updateLine(index, 'materialType', event.currentTarget.value)}
+										/>
+										<div class="pair">
+											<TextField
+												label="Volumen (m³)"
+												name="volumeCubicMeters"
+												type="number"
+												min="0.01"
+												step="0.01"
+												required
+												value={line.volumeCubicMeters}
+												oninput={(event) =>
+													updateLine(index, 'volumeCubicMeters', event.currentTarget.value)}
+											/>
+											<TextField
+												label="Valor comercial por m³ (VED)"
+												name="commercialValuePerUnit"
+												type="number"
+												min="0.01"
+												step="0.01"
+												required
+												value={line.commercialValuePerUnit}
+												oninput={(event) =>
+													updateLine(index, 'commercialValuePerUnit', event.currentTarget.value)}
+											/>
+										</div>
+									</article>
 								{/each}
 							</div>
+							<button
+								type="button"
+								class="add"
+								disabled={lines.length >= 30}
+								onclick={() => (lines = [...lines, blankLine()])}
+							>
+								Agregar material
+							</button>
 						</fieldset>
 
-						<fieldset>
-							<legend>Mineral y base</legend>
-							<div class="fields">
-								<TextField
-									label="Material"
-									name="materialType"
-									required
-									maxlength="100"
-									placeholder="Arena, grava, arcilla…"
-									value={field('materialType', '')}
-								/>
-								<div class="pair">
-									<TextField
-										label="Volumen (m³)"
-										name="volumeCubicMeters"
-										type="number"
-										min="0.01"
-										step="0.01"
-										required
-										value={volumeCubicMeters}
-										oninput={(event) => (volumeCubicMeters = event.currentTarget.value)}
-									/>
-									<TextField
-										label="Valor comercial por m³ (VED)"
-										name="commercialValuePerUnit"
-										type="number"
-										min="0.01"
-										step="0.01"
-										required
-										value={commercialValuePerUnit}
-										oninput={(event) => (commercialValuePerUnit = event.currentTarget.value)}
-									/>
-								</div>
-							</div>
-						</fieldset>
+						<PaymentFields
+							accounts={data.accounts ?? []}
+							reference={field('bankReferenceNumber', '')}
+							accountId={field('bankAccountId', '')}
+						/>
 
 						<div class="actions">
-							<Button disabled={submitting}>{submitting ? 'Guardando…' : 'Presentar declaración'}</Button>
+							<Button disabled={submitting}
+								>{submitting ? 'Guardando…' : 'Presentar declaración'}</Button
+							>
 							<Button href="/mineria" variant="ghost">Volver</Button>
 						</div>
 					</Form>
@@ -165,42 +232,33 @@
 					<p class="kicker">Resumen</p>
 					<h2>{periodLabel(Number(periodYear), Number(periodMonth))}</h2>
 					<p class="status" class:late>
-						{late ? 'Extemporánea' : 'En término'}
+						{late ? 'Fuera de tiempo' : 'En término'}
 					</p>
 					<dl>
 						<div>
-							<dt>Actividad</dt>
-							<dd>{ACTIVITY_LABELS[activityType] ?? activityType}</dd>
+							<dt>Materiales</dt>
+							<dd>{lines.length}</dd>
 						</div>
 						<div>
-							<dt>Alícuota</dt>
-							<dd>{rate}%</dd>
-						</div>
-						<div>
-							<dt>Volumen</dt>
-							<dd>{volumeAmount > 0 ? volume(volumeAmount) : '—'}</dd>
-						</div>
-						<div>
-							<dt>Valor unitario</dt>
-							<dd>{unitPrice > 0 ? money(unitPrice) : '—'}</dd>
+							<dt>Con monto</dt>
+							<dd>{estimatedCount}</dd>
 						</div>
 					</dl>
 					<div class="total">
-						<span>Subtotal estimado</span>
-						<strong>{estimate != null ? money(estimate) : '—'}</strong>
-						{#if estimate != null}
-							<p>{volume(volumeAmount)} × {money(unitPrice)} × {rate}%</p>
-						{:else}
-							<p>Indica volumen y valor para estimar el subtotal.</p>
-						{/if}
+						<span>Total estimado</span>
+						<strong>{estimatedCount > 0 ? money(estimate) : '—'}</strong>
+						<p>Cada material usa su alícuota. El servidor recalcula al guardar.</p>
 					</div>
+					{#if late}
+						<p class="late-banner">Fuera de tiempo</p>
+					{/if}
 					<p class="note">
 						{#if late}
-							Esta presentación queda fuera del lapso. La sanción se tramita por expediente.
+							Esta presentación queda fuera del lapso del día 1 al 10. No se calcula una multa.
 						{:else}
 							Este período está dentro de los primeros 10 días del mes.
 						{/if}
-						El servidor recalcula el subtotal al guardar.
+						Sin comprobante y referencia la declaración no se envía.
 					</p>
 				</aside>
 			</div>
@@ -254,63 +312,97 @@
 		text-transform: uppercase;
 	}
 
-	.fields {
-		display: grid;
-		gap: 0.85rem;
-	}
-
 	.pair {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 0.85rem;
 	}
 
-	.choices {
+	.lines {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 0.6rem;
+		gap: 0.85rem;
 	}
 
-	.choices label {
-		position: relative;
+	.line {
 		display: grid;
-		gap: 0.2rem;
-		min-height: 4.6rem;
-		padding: 0.85rem 0.9rem;
+		gap: 0.8rem;
+		padding: 0.95rem;
 		border: 1px solid var(--line);
-		border-radius: 1rem;
+		border-radius: 1.1rem;
 		background: #fff;
+	}
+
+	.line-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.line-head p {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin: 0;
+		font-weight: 700;
+	}
+
+	.index {
+		display: inline-grid;
+		place-items: center;
+		width: 1.55rem;
+		height: 1.55rem;
+		border-radius: 999px;
+		background: var(--wine-deep);
+		color: #fff;
+		font-size: 0.78rem;
+	}
+
+	.line-tools {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+	}
+
+	.chip {
+		padding: 0.2rem 0.6rem;
+		border-radius: 999px;
+		background: var(--wine-soft);
+		color: var(--wine-dark);
+		font-size: 0.78rem;
+		font-weight: 700;
+	}
+
+	.line-head button,
+	.add {
+		border: 0;
+		background: transparent;
+		color: var(--wine-dark);
+		font: inherit;
+		font-weight: 700;
 		cursor: pointer;
 	}
 
-	.choices label.selected {
-		border-color: var(--wine);
+	.add {
+		width: 100%;
+		margin-top: 0.85rem;
+		padding: 0.85rem 1rem;
+		border: 1px dashed var(--wine);
+		border-radius: 1rem;
 		background: var(--wine-soft);
 	}
 
-	.choices label:focus-within {
-		box-shadow: 0 0 0 4px var(--wine-soft);
+	.add:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
 	}
 
-	.choices input {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		margin: -1px;
-		padding: 0;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		border: 0;
-	}
-
-	.choices span {
-		font-weight: 650;
-	}
-
-	.choices strong {
-		color: var(--wine-dark);
-		font-size: 1.15rem;
-		letter-spacing: -0.04em;
+	.late-banner {
+		margin: 0;
+		color: #9b1c1c;
+		font-size: 1.45rem;
+		font-weight: 800;
+		letter-spacing: -0.03em;
 	}
 
 	.actions {
@@ -420,8 +512,7 @@
 	}
 
 	@media (max-width: 640px) {
-		.pair,
-		.choices {
+		.pair {
 			grid-template-columns: 1fr;
 		}
 	}

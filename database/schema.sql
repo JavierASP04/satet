@@ -13,7 +13,8 @@ CREATE TYPE doc_type AS ENUM ('RIF_JURIDICO', 'RIF_NATURAL', 'CEDULA', 'PASAPORT
 CREATE TYPE tax_type AS ENUM ('MINERO', 'UN_POR_MIL', 'TIMBRE_FISCAL');
 CREATE TYPE payment_status AS ENUM ('PENDIENTE', 'VERIFICADO', 'RECHAZADO');
 CREATE TYPE stamp_status AS ENUM ('ACTIVO', 'CONSUMIDO', 'ANULADO');
-CREATE TYPE mining_activity AS ENUM ('EXTRACCION', 'PROCESAMIENTO', 'SUBPRODUCTO');
+CREATE TYPE mining_activity AS ENUM ('EXTRACCION', 'PROCESAMIENTO', 'SUBPRODUCTO', 'PREMEZCLADO');
+CREATE TYPE royalty_payment_form AS ENUM ('DINERO_TOTAL', 'DINERO_FRACCIONADO', 'ESPECIE');
 
 -- 1. TABLE: USERS & RBAC
 CREATE TABLE users (
@@ -66,25 +67,60 @@ CREATE TABLE bcv_rates (
 );
 
 -- 5. TABLE: MINING DECLARATIONS (MÓDULO 2)
+-- Varios materiales por declaración. El comprobante va con la declaración.
+-- La planilla PDF solo sale cuando status = VERIFICADO (aprobada por el administrador).
 CREATE TABLE mining_declarations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     taxpayer_id UUID NOT NULL REFERENCES taxpayers(id),
     period_year INT NOT NULL,
     period_month INT NOT NULL, -- 1 to 12
-    activity_type mining_activity NOT NULL,
-    material_type VARCHAR(100) NOT NULL, -- Arena, Grava, Arcilla, etc.
-    volume_cubic_meters NUMERIC(12, 2) NOT NULL,
-    commercial_value_per_unit NUMERIC(12, 2) NOT NULL,
-    applied_tax_rate NUMERIC(5, 2) NOT NULL, -- 10.00, 5.00, 1.00
-    subtotal_ved NUMERIC(15, 2) NOT NULL,
-    is_extemporaneous BOOLEAN DEFAULT FALSE, -- Flag si > día 10
+    total_ved NUMERIC(15, 2) NOT NULL,
+    is_extemporaneous BOOLEAN DEFAULT FALSE,
+    bank_reference_number VARCHAR(100) NOT NULL,
+    bank_account_id UUID NOT NULL REFERENCES bank_accounts(id),
+    voucher_file_name VARCHAR(120) NOT NULL,
+    voucher_media_type VARCHAR(40) NOT NULL,
+    voucher_content BYTEA NOT NULL,
     declaration_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    status payment_status DEFAULT 'PENDIENTE'
+    status payment_status DEFAULT 'PENDIENTE',
+    rejection_reason TEXT,
+    resolved_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMP WITH TIME ZONE
 );
 
--- 6. TABLE: ONE_PER_THOUSAND DECLARATIONS (MÓDULO 3)
+CREATE TABLE mining_declaration_lines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    declaration_id UUID NOT NULL REFERENCES mining_declarations(id) ON DELETE CASCADE,
+    line_order INT NOT NULL,
+    activity_type mining_activity NOT NULL,
+    material_type VARCHAR(100) NOT NULL,
+    volume_cubic_meters NUMERIC(12, 2) NOT NULL,
+    commercial_value_per_unit NUMERIC(12, 2) NOT NULL,
+    applied_tax_rate NUMERIC(5, 2) NOT NULL,
+    subtotal_ved NUMERIC(15, 2) NOT NULL
+);
+
+-- 6. TABLE: ONE_PER_THOUSAND (MÓDULO 3)
+-- Una carga (una o muchas órdenes) comparte comprobante, referencia y estado.
+CREATE TABLE one_per_thousand_filings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    taxpayer_id UUID NOT NULL REFERENCES taxpayers(id),
+    total_tax_ved NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    bank_reference_number VARCHAR(100) NOT NULL,
+    bank_account_id UUID NOT NULL REFERENCES bank_accounts(id),
+    voucher_file_name VARCHAR(120) NOT NULL,
+    voucher_media_type VARCHAR(40) NOT NULL,
+    voucher_content BYTEA NOT NULL,
+    status payment_status DEFAULT 'PENDIENTE',
+    rejection_reason TEXT,
+    resolved_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE one_per_thousand_declarations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    filing_id UUID NOT NULL REFERENCES one_per_thousand_filings(id) ON DELETE CASCADE,
     taxpayer_id UUID NOT NULL REFERENCES taxpayers(id),
     payment_order_number VARCHAR(100) NOT NULL,
     entity_name VARCHAR(255) NOT NULL,
@@ -94,6 +130,39 @@ CREATE TABLE one_per_thousand_declarations (
     status payment_status DEFAULT 'PENDIENTE',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 6b. REGALÍAS MINERAS (7 % anual sobre el volumen declarado del año)
+CREATE TABLE mining_royalties (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    taxpayer_id UUID NOT NULL REFERENCES taxpayers(id),
+    period_year INT NOT NULL,
+    volume_cubic_meters NUMERIC(14, 2) NOT NULL,
+    commercial_value_per_unit NUMERIC(12, 2) NOT NULL,
+    applied_rate NUMERIC(5, 2) NOT NULL,
+    amount_ved NUMERIC(15, 2) NOT NULL,
+    payment_form royalty_payment_form NOT NULL,
+    bank_reference_number VARCHAR(100),
+    bank_account_id UUID REFERENCES bank_accounts(id),
+    voucher_file_name VARCHAR(120),
+    voucher_media_type VARCHAR(40),
+    voucher_content BYTEA,
+    status payment_status DEFAULT 'PENDIENTE',
+    rejection_reason TEXT,
+    resolved_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (taxpayer_id, period_year)
+);
+
+-- Cuentas institucionales de ejemplo (números ficticios). Minería y 1 x 1000: Banco de Venezuela.
+-- Timbres: Banco de Venezuela, Banca Amiga y BNC.
+INSERT INTO bank_accounts (id, bank_name, account_number, account_type, holder_name, holder_rif)
+VALUES
+    ('00000000-0000-4000-8000-0000000000a1', 'Banco de Venezuela', '01020000000000000001', 'MINERO', 'Gobernación del Estado Trujillo', 'G-200001234'),
+    ('00000000-0000-4000-8000-0000000000b1', 'Banco de Venezuela', '01020000000000000002', 'UN_POR_MIL', 'Gobernación del Estado Trujillo', 'G-200001234'),
+    ('00000000-0000-4000-8000-0000000000c1', 'Banco de Venezuela', '01020000000000000003', 'TIMBRE_FISCAL', 'Gobernación del Estado Trujillo', 'G-200001234'),
+    ('00000000-0000-4000-8000-0000000000c2', 'Banca Amiga', '01720000000000000001', 'TIMBRE_FISCAL', 'Gobernación del Estado Trujillo', 'G-200001234'),
+    ('00000000-0000-4000-8000-0000000000c3', 'BNC', '01910000000000000001', 'TIMBRE_FISCAL', 'Gobernación del Estado Trujillo', 'G-200001234');
 
 -- 7. TABLE: ELECTRONIC STAMPS (MÓDULO 4 & 6)
 CREATE TABLE electronic_stamps (

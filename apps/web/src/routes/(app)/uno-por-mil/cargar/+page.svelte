@@ -3,9 +3,15 @@
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import Form from '#lib/components/Form.svelte';
+	import PaymentFields from '#lib/components/PaymentFields.svelte';
 	import Screen from '#lib/components/Screen.svelte';
 	import TextField from '#lib/components/TextField.svelte';
-	import { formatCalendarDate, formatVed, taxFromExecuted, todayInCaracas } from '#lib/one-per-thousand.js';
+	import {
+		formatCalendarDate,
+		formatVed,
+		taxFromExecuted,
+		todayInCaracas
+	} from '#lib/one-per-thousand.js';
 
 	let { data, form } = $props();
 
@@ -49,7 +55,9 @@
 			return tax == null ? sum : sum + tax;
 		}, 0)
 	);
-	const batchCount = $derived(rows.filter((row) => taxFromExecuted(row.executedAmountVed) != null).length);
+	const batchCount = $derived(
+		rows.filter((row) => taxFromExecuted(row.executedAmountVed) != null).length
+	);
 	const canLoad = $derived(Boolean(data.taxpayer?.isApproved));
 	const orderLabel = $derived(paymentOrderNumber.trim() || 'Sin número');
 	const entityLabel = $derived(entityName.trim() || 'Nueva orden');
@@ -70,16 +78,27 @@
 		<Alert>Esta cuenta no tiene un expediente de contribuyente.</Alert>
 	{:else if !canLoad}
 		<Alert tone="warn">
-			El expediente debe estar aprobado para registrar retenciones. Recaudación todavía no lo ha aprobado.
+			El expediente debe estar aprobado para registrar retenciones. El administrador todavía no lo
+			ha aprobado.
 		</Alert>
 	{:else}
 		<div class="composer">
 			<div class="modes" role="tablist" aria-label="Tipo de carga">
-				<button type="button" role="tab" aria-selected={mode === 'single'} onclick={() => (mode = 'single')}>
+				<button
+					type="button"
+					role="tab"
+					aria-selected={mode === 'single'}
+					onclick={() => (mode = 'single')}
+				>
 					<span>Una orden</span>
 					<strong>Individual</strong>
 				</button>
-				<button type="button" role="tab" aria-selected={mode === 'batch'} onclick={() => (mode = 'batch')}>
+				<button
+					type="button"
+					role="tab"
+					aria-selected={mode === 'batch'}
+					onclick={() => (mode = 'batch')}
+				>
 					<span>Varias órdenes</span>
 					<strong>Hasta 100</strong>
 				</button>
@@ -94,6 +113,7 @@
 						<Form
 							method="POST"
 							action="?/single"
+							enctype="multipart/form-data"
 							submit={() => {
 								submitting = true;
 								return async ({ update }) => {
@@ -149,8 +169,15 @@
 									/>
 								</div>
 							</fieldset>
+							<PaymentFields
+								accounts={data.accounts ?? []}
+								reference={form?.mode === 'single' ? (form?.values?.bankReferenceNumber ?? '') : ''}
+								accountId={form?.mode === 'single' ? (form?.values?.bankAccountId ?? '') : ''}
+							/>
 							<div class="actions">
-								<Button disabled={submitting}>{submitting ? 'Guardando…' : 'Registrar orden'}</Button>
+								<Button disabled={submitting}
+									>{submitting ? 'Guardando…' : 'Registrar orden'}</Button
+								>
 								<Button href="/uno-por-mil" variant="ghost">Volver</Button>
 							</div>
 						</Form>
@@ -158,7 +185,9 @@
 					<aside class="slip" aria-live="polite">
 						<p class="kicker">Retención</p>
 						<h2>{entityLabel}</h2>
-						<p class="status" class:wait={singleTax == null}>{singleTax == null ? 'Incompleta' : 'Lista'}</p>
+						<p class="status" class:wait={singleTax == null}>
+							{singleTax == null ? 'Incompleta' : 'Lista'}
+						</p>
 						<dl>
 							<div>
 								<dt>Orden</dt>
@@ -186,7 +215,10 @@
 								<p>Indica el monto ejecutado para ver la retención.</p>
 							{/if}
 						</div>
-						<p class="note">El servidor recalcula el impuesto al guardar.</p>
+						<p class="note">
+							El servidor recalcula el impuesto al guardar. Hace falta el comprobante y la
+							referencia.
+						</p>
 					</aside>
 				</div>
 			{:else}
@@ -195,6 +227,7 @@
 						<Form
 							method="POST"
 							action="?/batch"
+							enctype="multipart/form-data"
 							submit={() => {
 								submitting = true;
 								return async ({ update }) => {
@@ -230,7 +263,8 @@
 												maxlength="100"
 												placeholder="OP-2026-001"
 												value={row.paymentOrderNumber}
-												oninput={(event) => updateRow(index, 'paymentOrderNumber', event.currentTarget.value)}
+												oninput={(event) =>
+													updateRow(index, 'paymentOrderNumber', event.currentTarget.value)}
 											/>
 											<TextField
 												label="Ente o banco"
@@ -238,7 +272,8 @@
 												maxlength="255"
 												placeholder="Alcaldía de Valera"
 												value={row.entityName}
-												oninput={(event) => updateRow(index, 'entityName', event.currentTarget.value)}
+												oninput={(event) =>
+													updateRow(index, 'entityName', event.currentTarget.value)}
 											/>
 											<TextField
 												label="Monto ejecutado (VED)"
@@ -247,7 +282,8 @@
 												min="0.01"
 												step="0.01"
 												value={row.executedAmountVed}
-												oninput={(event) => updateRow(index, 'executedAmountVed', event.currentTarget.value)}
+												oninput={(event) =>
+													updateRow(index, 'executedAmountVed', event.currentTarget.value)}
 											/>
 											<TextField
 												label="Fecha de ejecución"
@@ -255,7 +291,8 @@
 												type="date"
 												max={today}
 												value={row.executionDate}
-												oninput={(event) => updateRow(index, 'executionDate', event.currentTarget.value)}
+												oninput={(event) =>
+													updateRow(index, 'executionDate', event.currentTarget.value)}
 											/>
 										</div>
 									</article>
@@ -269,8 +306,15 @@
 							>
 								Agregar orden
 							</button>
+							<PaymentFields
+								accounts={data.accounts ?? []}
+								reference={form?.mode === 'batch' ? (form?.values?.bankReferenceNumber ?? '') : ''}
+								accountId={form?.mode === 'batch' ? (form?.values?.bankAccountId ?? '') : ''}
+							/>
 							<div class="actions">
-								<Button disabled={submitting}>{submitting ? 'Guardando…' : 'Registrar órdenes'}</Button>
+								<Button disabled={submitting}
+									>{submitting ? 'Guardando…' : 'Registrar órdenes'}</Button
+								>
 								<Button href="/uno-por-mil" variant="ghost">Volver</Button>
 							</div>
 						</Form>
@@ -304,7 +348,10 @@
 									: `${batchCount} órdenes entran en la suma.`}
 							</p>
 						</div>
-						<p class="note">Cada fila se calcula por separado. El servidor recalcula al guardar.</p>
+						<p class="note">
+							Cada fila se calcula por separado. El servidor recalcula al guardar. Un comprobante
+							cubre toda la carga.
+						</p>
 					</aside>
 				</div>
 			{/if}

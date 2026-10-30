@@ -129,6 +129,32 @@ export async function approve(req, res) {
 		if (!row) {
 			throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'Expediente de contribuyente no encontrado.');
 		}
+		if (!approved) {
+			if (row.is_approved) {
+				throw new HttpError(
+					409,
+					ERROR_CODES.CONFLICT,
+					'El expediente ya fue aprobado y no se elimina desde aquí.'
+				);
+			}
+			await writeAudit(client, {
+				userId: req.user.id,
+				action: 'REJECT',
+				tableAffected: 'taxpayers',
+				recordId: row.id,
+				oldValues: taxpayerSnapshot(row),
+				newValues: null,
+				...meta
+			});
+			await client.query('DELETE FROM taxpayers WHERE id = $1', [row.id]);
+			await client.query(
+				`UPDATE users
+				 SET email = $1, password_hash = $2, is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+				 WHERE id = $3`,
+				[`rechazado-${row.user_id}@cuentas.satet.invalid`, 'rechazado', row.user_id]
+			);
+			return null;
+		}
 		if (row.is_approved === approved) return row;
 
 		const updated = await client.query(
@@ -151,5 +177,9 @@ export async function approve(req, res) {
 		return next;
 	});
 
+	if (!taxpayer) {
+		res.json({ deleted: true });
+		return;
+	}
 	res.json({ taxpayer: toTaxpayer(taxpayer) });
 }

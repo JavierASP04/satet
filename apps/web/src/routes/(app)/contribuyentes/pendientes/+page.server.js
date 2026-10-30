@@ -30,5 +30,20 @@ export const actions = {
 			});
 		}
 		return { ok: true, message: 'Expediente aprobado.' };
+	},
+
+	reject: async ({ request, fetch, cookies }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		const response = await apiFetch(fetch, `/taxpayers/${id}/approve`, {
+			method: 'PATCH',
+			headers: sessionHeaders(cookies),
+			body: JSON.stringify({ approved: false })
+		});
+		if (!response.ok) {
+			return fail(response.status, {
+				message: await readApiError(response, 'No se pudo rechazar la solicitud.')
+			});
+		}
+		return { ok: true, message: 'Solicitud rechazada. Los datos cargados fueron eliminados.' };
 	}
 };

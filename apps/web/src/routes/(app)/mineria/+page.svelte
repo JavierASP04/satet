@@ -29,7 +29,7 @@
 <Screen
 	module="02"
 	title="Mis declaraciones mineras"
-	description="Declaraciones juradas mensuales de extracción, procesamiento y subproductos."
+	description="Declaraciones mensuales de extracción, procesamiento, producto y premezclado."
 	ready
 >
 	<div class="stack">
@@ -48,7 +48,8 @@
 					{#if canDeclare}
 						Todavía no has presentado una declaración minera.
 					{:else if data.taxpayer}
-						Cuando Recaudación apruebe el expediente podrás declarar el mes anterior, del día 1 al 10.
+						Cuando el administrador apruebe el expediente podrás declarar el mes anterior, del día 1
+						al 10.
 					{:else}
 						Esta cuenta no tiene un expediente de contribuyente.
 					{/if}
@@ -62,7 +63,11 @@
 				<div class="figure">
 					<p class="kicker">Subtotal declarado</p>
 					<p class="amount">{figure(total)}</p>
-					<p class="unit">VED · {data.declarations.length === 1 ? '1 declaración' : `${data.declarations.length} declaraciones`}</p>
+					<p class="unit">
+						VED · {data.declarations.length === 1
+							? '1 declaración'
+							: `${data.declarations.length} declaraciones`}
+					</p>
 				</div>
 				<div class="meta">
 					<dl>
@@ -102,11 +107,16 @@
 							<td>
 								<strong>{periodLabel(declaration.periodYear, declaration.periodMonth)}</strong>
 								{#if declaration.isExtemporaneous}
-									<span class="late">Extemporánea</span>
+									<span class="late">Fuera de tiempo</span>
 								{/if}
 							</td>
 							<td>{ACTIVITY_LABELS[declaration.activityType] ?? declaration.activityType}</td>
-							<td>{declaration.materialType}</td>
+							<td>
+								{declaration.materialType}
+								{#if declaration.lines?.length > 1}
+									<span class="late">{declaration.lines.length} materiales</span>
+								{/if}
+							</td>
 							<td class="num">{volume(declaration.volumeCubicMeters)}</td>
 							<td class="num tax">{money(declaration.subtotalVed)}</td>
 							<td>
@@ -248,9 +258,9 @@
 	.late {
 		display: block;
 		margin-top: 0.25rem;
-		color: var(--warning);
-		font-size: 0.78rem;
-		font-weight: 700;
+		color: #9b1c1c;
+		font-size: 1.05rem;
+		font-weight: 800;
 	}
 
 	.pill {

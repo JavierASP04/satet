@@ -18,7 +18,7 @@
 <Screen
 	module="01"
 	title="Solicitudes pendientes"
-	description="Expedientes que Recaudación todavía no aprueba."
+	description="Expedientes que el administrador todavía no decide."
 	ready
 >
 	<div class="stack">
@@ -37,7 +37,10 @@
 					<p class="unit">{data.taxpayers.length === 1 ? 'expediente' : 'expedientes'}</p>
 				</div>
 				<div class="meta">
-					<p>Cada aprobación habilita declaraciones, retenciones y timbres para esa cuenta.</p>
+					<p>
+						Aprobar habilita declaraciones, retenciones y timbres. Rechazar borra los datos de la
+						solicitud.
+					</p>
 				</div>
 			</section>
 			<DataTable>
@@ -61,10 +64,25 @@
 							<td>{taxpayer.email}</td>
 							<td>{when(taxpayer.createdAt)}</td>
 							<td>
-								<form method="POST" action="?/approve" use:enhance>
-									<input type="hidden" name="id" value={taxpayer.id} />
-									<Button>Aprobar</Button>
-								</form>
+								<div class="actions">
+									<form method="POST" action="?/approve" use:enhance>
+										<input type="hidden" name="id" value={taxpayer.id} />
+										<Button>Aprobar</Button>
+									</form>
+									<form
+										method="POST"
+										action="?/reject"
+										use:enhance
+										onsubmit={(event) => {
+											if (!confirm('Se borrarán los datos de esta solicitud. ¿Continuar?')) {
+												event.preventDefault();
+											}
+										}}
+									>
+										<input type="hidden" name="id" value={taxpayer.id} />
+										<Button variant="ghost">Rechazar y eliminar</Button>
+									</form>
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -143,6 +161,12 @@
 	.sub {
 		color: var(--muted);
 		font-size: 0.88rem;
+	}
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem;
 	}
 
 	form {

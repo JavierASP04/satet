@@ -116,7 +116,7 @@ Si ya fue aprobado: `403`. Si el usuario no tiene expediente: `404`.
 
 ### `GET /taxpayers/pending`
 
-Rol con permiso de aprobar (`ANALISTA_RECAUDACION` o `ADMIN_SISTEMA`). `200`:
+Solo `ADMIN_SISTEMA`. Recaudación ya no aprueba cuentas. `200`:
 
 ```json
 { "taxpayers": [{ "email": "empresa@ejemplo.com", "isApproved": false }] }
@@ -132,9 +132,11 @@ El `:id` es el del contribuyente, no el del usuario. Mismo permiso que el listad
 { "approved": true }
 ```
 
-`true` marca `is_approved` y guarda `approvedBy` con el id de quien aprueba. `false` deja el expediente pendiente y limpia `approvedBy` (no hay columna de motivo de rechazo). `200`: `{ taxpayer }`.
+`true` marca `is_approved` y guarda `approvedBy` con el id de quien aprueba. `200`: `{ taxpayer }`. Si el expediente ya estaba aprobado, la respuesta es el mismo registro y no se vuelve a auditar.
 
-Si el expediente ya estaba en ese estado, la respuesta es el mismo registro y no se vuelve a auditar. UUID inválido: `400`. Id inexistente: `404`.
+`false` rechaza una solicitud que todavía no fue aprobada: borra el expediente y desactiva la cuenta, cambiando el correo para que el original se pueda volver a registrar. `200`: `{ "deleted": true }`. Si el expediente ya estaba aprobado, `409`: no se elimina desde aquí.
+
+UUID inválido: `400`. Id inexistente: `404`.
 
 ## Códigos de error
 

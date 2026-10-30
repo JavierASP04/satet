@@ -17,21 +17,22 @@ export const RIF_REGEX = /^[JGV]-\d{8}-\d$/;
 /** Costo mínimo de bcrypt (Módulo 01, regla 3). */
 export const BCRYPT_COST = 12;
 
-/** Alícuotas legales configurables del impuesto minero, en % (Módulo 02). */
+/**
+ * Alícuotas del impuesto minero, en %. Reunión del 22 de octubre de 2026:
+ * extracción 6, procesamiento 5, producto (subproducto) 1, premezclado 2.
+ */
 export const MINING_TAX_RATES = Object.freeze({
-	EXTRACCION: 10,
+	EXTRACCION: 6,
 	PROCESAMIENTO: 5,
-	SUBPRODUCTO: 1
+	SUBPRODUCTO: 1,
+	PREMEZCLADO: 2
 });
 
-/** Último día del lapso declarativo mensual (Módulo 02, regla del día 11). */
+/** Último día del lapso declarativo mensual. Fuera de ese lapso solo se marca el aviso. */
 export const DECLARATION_DEADLINE_DAY = 10;
 
-/**
- * Sanción legal por extemporaneidad, en euros. Se informa como alerta del expediente
- * y no se suma al subtotal de la planilla de pago.
- */
-export const EXTEMPORANEOUS_FINE_EUR = 1000;
+/** Regalía anual sobre el volumen declarado del año, en %. */
+export const ROYALTY_TAX_RATE = 7;
 
 /** Divisor del impuesto 1 x 1000 (Módulo 03). */
 export const ONE_PER_THOUSAND_DIVISOR = 1000;

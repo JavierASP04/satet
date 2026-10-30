@@ -1,4 +1,6 @@
+import { fail } from '@sveltejs/kit';
 import { apiFetch, readApiError } from '#lib/server/api.js';
+import { text } from '#lib/server/payment.js';
 import { sessionHeaders } from '#lib/server/session.js';
 
 export const load = async ({ fetch, cookies }) => {
@@ -22,4 +24,23 @@ export const load = async ({ fetch, cookies }) => {
 		scope: body.scope === 'all' ? 'all' : 'own',
 		error: null
 	};
+};
+
+export const actions = {
+	resolve: async ({ request, fetch, cookies }) => {
+		const data = await request.formData();
+		const filingId = text(data, 'filingId');
+		const decision = text(data, 'decision');
+		const response = await apiFetch(fetch, `/one-per-thousand/filings/${filingId}/resolve`, {
+			method: 'POST',
+			headers: sessionHeaders(cookies),
+			body: JSON.stringify({ decision })
+		});
+		if (!response.ok) {
+			return fail(response.status, {
+				message: await readApiError(response, 'No se pudo resolver la carga.')
+			});
+		}
+		return { ok: true, message: 'Carga aprobada. Ya se puede imprimir la planilla.' };
+	}
 };
