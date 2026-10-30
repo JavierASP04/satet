@@ -83,6 +83,8 @@ El texto del QR es un JSON con las claves de la especificación y una firma `sig
 
 La firma cubre el JSON de esos campos, sin `sig`, con las claves en el orden de la tabla. El secreto es `JWT_SECRET` del servidor. El navegador no firma ni verifica: muestra el serial y descarga el PDF. Una verificación que cambie un monto, el RIF o el serial tiene que fallar.
 
+El consumo en notaría, una sola vez, está en [`api-saren.md`](api-saren.md). Este módulo no cambia el estado a `CONSUMIDO`.
+
 ## Errores
 
 | HTTP | `code`             | Cuándo                                                                        |
