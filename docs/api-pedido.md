@@ -139,9 +139,9 @@ Rechazar una solicitud pendiente (`PATCH /api/v1/taxpayers/:id/approve` con `{ "
 
 - La extracción pasó de 10 % a 6 %. Se agregó premezclado al 2 %. Producto es la actividad `SUBPRODUCTO`, al 1 %.
 - No se calcula la multa de 1.000 EUR. Solo queda el aviso de fuera de tiempo.
-- La planilla de minería, de uno por mil y de regalías se imprime después de que el administrador aprueba. En la especificación el pago lo verificaba tesorería.
+- La planilla se imprime con estado `VERIFICADO`. La deja así el administrador, o tesorería al verificar un pago asociado que todavía estaba pendiente. El rechazo de ese pago bloquea la planilla. Tesorería no revierte una planilla que ya estaba aprobada. El contrato está en [`api-payments.md`](api-payments.md).
 - El timbre sigue emitiéndose al comprarlo, con PDF y QR firmado, como está en [`api-stamps.md`](api-stamps.md). La reunión pide que ese PDF también espere aprobación y un tabulador con estados Disponible, Usado, Consumido y Anulado. Eso no entra en este corte.
 - La transcripción dice «1 %» dentro del módulo titulado uno por mil. Se mantiene el divisor 1.000. Un 1 % multiplicaría el impuesto por diez y contradice el nombre del tributo.
 - «Aprobado» es el estado `VERIFICADO` que ya existía.
 - Los números de cuenta del esquema son ficticios.
-- Siguen pendientes la verificación SAREN del QR, el tabulador y las exoneraciones, los reportes del POA, la conciliación de tesorería y el cambio visual de toda la aplicación. Las planillas sí llevan el texto de la Gobernación en verde y el aviso en rojo.
+- Siguen pendientes la verificación SAREN del QR, el tabulador y las exoneraciones, los reportes del POA y el cambio visual de toda la aplicación. Las planillas sí llevan el texto de la Gobernación en verde y el aviso en rojo.

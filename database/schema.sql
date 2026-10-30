@@ -181,6 +181,8 @@ CREATE TABLE electronic_stamps (
 );
 
 -- 8. TABLE: PAYMENTS & VOUCHERS (MÓDULO 5)
+-- El comprobante queda en la fila. La obligación asociada es opcional:
+-- al verificar, una declaración pendiente pasa a VERIFICADO; al rechazar, no se emite.
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     taxpayer_id UUID NOT NULL REFERENCES taxpayers(id),
@@ -191,10 +193,41 @@ CREATE TABLE payments (
     payment_date DATE NOT NULL,
     amount_paid_ved NUMERIC(15, 2) NOT NULL,
     voucher_file_path VARCHAR(512) NOT NULL,
+    voucher_media_type VARCHAR(40) NOT NULL,
+    voucher_content BYTEA NOT NULL,
+    related_kind VARCHAR(40),
+    related_id UUID,
     status payment_status DEFAULT 'PENDIENTE',
     rejection_reason TEXT,
     verified_by UUID REFERENCES users(id),
     verified_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT payments_account_reference_key UNIQUE (target_bank_account_id, bank_reference_number),
+    CONSTRAINT payments_related_pair CHECK (
+        (related_kind IS NULL AND related_id IS NULL)
+        OR (related_kind IS NOT NULL AND related_id IS NOT NULL)
+    ),
+    CONSTRAINT payments_related_kind CHECK (
+        related_kind IS NULL OR related_kind IN (
+            'MINING_DECLARATION',
+            'ONE_PER_THOUSAND_FILING',
+            'MINING_ROYALTY',
+            'ELECTRONIC_STAMP'
+        )
+    )
+);
+
+CREATE UNIQUE INDEX payments_one_open_subject
+    ON payments (related_kind, related_id)
+    WHERE status <> 'RECHAZADO' AND related_id IS NOT NULL;
+
+-- Aviso al contribuyente cuando tesorería rechaza el pago.
+CREATE TABLE payment_notices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    payment_id UUID NOT NULL REFERENCES payments(id),
+    email VARCHAR(255) NOT NULL,
+    subject VARCHAR(200) NOT NULL,
+    body TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

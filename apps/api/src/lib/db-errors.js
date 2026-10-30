@@ -25,6 +25,21 @@ export function conflictFromDb(err) {
 			field: 'userId'
 		});
 	}
+	if (constraint === 'payments_account_reference_key') {
+		return new HttpError(
+			409,
+			ERROR_CODES.CONFLICT,
+			'Esa referencia ya está registrada en la cuenta institucional.',
+			{ field: 'bankReferenceNumber' }
+		);
+	}
+	if (constraint === 'payments_one_open_subject') {
+		return new HttpError(
+			409,
+			ERROR_CODES.CONFLICT,
+			'Esa obligación ya tiene un pago pendiente o verificado.'
+		);
+	}
 
 	return new HttpError(
 		409,
