@@ -68,6 +68,7 @@ function renderPdf(stamp, png) {
 			['Serial', stamp.uuid],
 			['Contribuyente', stamp.taxpayer],
 			['RIF', stamp.rif],
+			...(stamp.concept ? [['Concepto', stamp.concept]] : []),
 			['Monto', `${stamp.amountEur} EUR`],
 			['Tasa BCV', `${stamp.bcvRate} VED por euro`],
 			['Bolívares', `${stamp.amountVed} VED`],

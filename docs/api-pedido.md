@@ -140,10 +140,10 @@ Rechazar una solicitud pendiente (`PATCH /api/v1/taxpayers/:id/approve` con `{ "
 - La extracción pasó de 10 % a 6 %. Se agregó premezclado al 2 %. Producto es la actividad `SUBPRODUCTO`, al 1 %.
 - No se calcula la multa de 1.000 EUR. Solo queda el aviso de fuera de tiempo.
 - La planilla se imprime con estado `VERIFICADO`. La deja así el administrador, o tesorería al verificar un pago asociado que todavía estaba pendiente. El rechazo de ese pago bloquea la planilla. Tesorería no revierte una planilla que ya estaba aprobada. El contrato está en [`api-payments.md`](api-payments.md).
-- El timbre sigue emitiéndose al comprarlo, con PDF y QR firmado, como está en [`api-stamps.md`](api-stamps.md). La reunión pide que ese PDF también espere aprobación y un tabulador con estados Disponible, Usado, Consumido y Anulado. Eso no entra en este corte.
+- El timbre se emite al comprarlo, con PDF y QR firmado, al precio de una fila del tabulador. El contrato está en [`api-stamps.md`](api-stamps.md). La reunión pedía estados Disponible y Usado; siguen Activo, Consumido y Anulado.
 - La transcripción dice «1 %» dentro del módulo titulado uno por mil. Se mantiene el divisor 1.000. Un 1 % multiplicaría el impuesto por diez y contradice el nombre del tributo.
 - «Aprobado» es el estado `VERIFICADO` que ya existía.
 - Los números de cuenta del esquema son ficticios.
 - El SAREN consume el QR una sola vez. El contrato está en [`api-saren.md`](api-saren.md). Un timbre `CONSUMIDO` no se vuelve a verificar.
 - Los reportes del POA leen los pagos ya verificados. La meta proyectada no está en la especificación y no se inventa. El contrato está en [`api-reports.md`](api-reports.md).
-- Siguen pendientes el tabulador y las exoneraciones, hasta que exista la tabla legal de montos, y el cambio visual de toda la aplicación. Las planillas sí llevan el texto de la Gobernación en verde y el aviso en rojo.
+- El tabulador cargó los múltiplos fijos del tipo de cambio. El PDF no lista exoneraciones. Siguen fuera los porcentajes sobre obra o capital, y el numeral 3 del artículo 36, que no trae cifra. El cambio visual de la aplicación sigue pendiente. Las planillas sí llevan el texto de la Gobernación en verde y el aviso en rojo.

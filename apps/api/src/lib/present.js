@@ -126,6 +126,7 @@ export function toStamp(row) {
 		amountVed: formatFixed(row.amount_ved, 2),
 		issuedAt,
 		status: row.status,
+		...(row.fee_code ? { feeCode: row.fee_code, concept: row.concept } : {}),
 		qrPayload: row.qr_payload
 	};
 }

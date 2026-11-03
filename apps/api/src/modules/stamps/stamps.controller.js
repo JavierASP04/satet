@@ -15,7 +15,14 @@ const STAMP_COLUMNS = `
 	s.id, s.uuid_code, s.amount_eur::text AS amount_eur,
 	s.bcv_rate_applied::text AS bcv_rate_applied,
 	s.amount_ved::text AS amount_ved, s.qr_payload, s.status, s.created_at,
+	s.fee_code, f.concept,
 	t.company_name, t.rif_number, t.user_id
+`;
+
+const STAMP_FROM = `
+	FROM electronic_stamps s
+	JOIN taxpayers t ON t.id = s.taxpayer_id
+	LEFT JOIN fiscal_stamp_fees f ON f.code = s.fee_code
 `;
 
 /** @param {import('express').Request} req */
@@ -40,9 +47,36 @@ async function approvedTaxpayer(req) {
 	return taxpayer;
 }
 
+/** GET /stamps/fees */
+export async function listFees(_req, res) {
+	const { rows } = await getPool().query(
+		`SELECT code, article, item, concept, times_official_rate::text AS times_official_rate
+		 FROM fiscal_stamp_fees
+		 ORDER BY sort_order`
+	);
+	res.status(200).json({
+		fees: rows.map((row) => ({
+			code: row.code,
+			article: row.article,
+			item: row.item,
+			concept: row.concept,
+			timesOfficialRate: formatFixed(row.times_official_rate, 2)
+		}))
+	});
+}
+
 /** POST /stamps/purchase */
 export async function purchase(req, res) {
-	const amountEur = req.body.amountEur.toFixed(2);
+	const fee = await getPool().query(
+		`SELECT code, concept, times_official_rate::text AS times_official_rate
+		 FROM fiscal_stamp_fees
+		 WHERE code = $1`,
+		[req.body.feeCode]
+	);
+	if (!fee.rows[0]) {
+		throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'Ese concepto no está en el tabulador.');
+	}
+	const amountEur = formatFixed(fee.rows[0].times_official_rate, 2);
 	const taxpayer = await approvedTaxpayer(req);
 	const rate = await findCurrentBcvRate();
 	if (!rate) {
@@ -70,10 +104,10 @@ export async function purchase(req, res) {
 	const row = await withTransaction(async (client) => {
 		const inserted = await client.query(
 			`INSERT INTO electronic_stamps (
-				uuid_code, taxpayer_id, amount_eur, bcv_rate_applied, amount_ved, qr_payload, status, created_at
-			) VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVO', $7)
+				uuid_code, taxpayer_id, amount_eur, bcv_rate_applied, amount_ved, qr_payload, fee_code, status, created_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVO', $8)
 			RETURNING id`,
-			[uuid, taxpayer.id, amountEur, bcvRate, amountVed, qrPayload, issuedAt]
+			[uuid, taxpayer.id, amountEur, bcvRate, amountVed, qrPayload, fee.rows[0].code, issuedAt]
 		);
 		const created = inserted.rows[0];
 		await writeAudit(client, {
@@ -86,6 +120,7 @@ export async function purchase(req, res) {
 				uuid,
 				rif: taxpayer.rif_number,
 				taxpayer: taxpayer.company_name,
+				fee_code: fee.rows[0].code,
 				amount_eur: amountEur,
 				bcv_rate: bcvRate,
 				amount_ved: amountVed,
@@ -98,8 +133,7 @@ export async function purchase(req, res) {
 
 	const { rows } = await getPool().query(
 		`SELECT ${STAMP_COLUMNS}
-		 FROM electronic_stamps s
-		 JOIN taxpayers t ON t.id = s.taxpayer_id
+		 ${STAMP_FROM}
 		 WHERE s.id = $1`,
 		[row.id]
 	);
@@ -114,8 +148,7 @@ export async function downloadPdf(req, res) {
 
 	const { rows } = await getPool().query(
 		`SELECT ${STAMP_COLUMNS}
-		 FROM electronic_stamps s
-		 JOIN taxpayers t ON t.id = s.taxpayer_id
+		 ${STAMP_FROM}
 		 WHERE s.uuid_code = $1`,
 		[req.params.uuid]
 	);

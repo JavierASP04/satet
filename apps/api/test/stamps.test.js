@@ -108,7 +108,7 @@ describe('emisión de timbres', () => {
 			const anonymous = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 10 })
+				body: JSON.stringify({ feeCode: '31.8' })
 			});
 			assert.equal(anonymous.status, 401);
 			assert.equal((await anonymous.json()).error.code, 'UNAUTHORIZED');
@@ -116,7 +116,7 @@ describe('emisión de timbres', () => {
 			const forbidden = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { cookie: sarenCookie, 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 10 })
+				body: JSON.stringify({ feeCode: '31.8' })
 			});
 			assert.equal(forbidden.status, 403);
 			assert.equal((await forbidden.json()).error.code, 'FORBIDDEN');
@@ -124,16 +124,23 @@ describe('emisión de timbres', () => {
 			const invalid = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 1.001 })
+				body: JSON.stringify({ amountEur: 10 })
 			});
 			assert.equal(invalid.status, 400);
 			assert.equal((await invalid.json()).error.code, 'VALIDATION_ERROR');
+
+			const unknown = await fetch(`${base}/api/v1/stamps/purchase`, {
+				method: 'POST',
+				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
+				body: JSON.stringify({ feeCode: '34.8' })
+			});
+			assert.equal(unknown.status, 404);
 
 			await insertTaxpayer(client, owner, 'J-12345678-9', 'Constructora Trujillo C.A.', false);
 			const unapproved = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 10 })
+				body: JSON.stringify({ feeCode: '31.8' })
 			});
 			assert.equal(unapproved.status, 403);
 			assert.equal((await unapproved.json()).error.code, 'FORBIDDEN');
@@ -142,7 +149,7 @@ describe('emisión de timbres', () => {
 			const noRate = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 10 })
+				body: JSON.stringify({ feeCode: '31.8' })
 			});
 			assert.equal(noRate.status, 404);
 			assert.equal((await noRate.json()).error.code, 'NOT_FOUND');
@@ -154,7 +161,7 @@ describe('emisión de timbres', () => {
 			const futureOnly = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 10 })
+				body: JSON.stringify({ feeCode: '31.8' })
 			});
 			assert.equal(futureOnly.status, 404);
 
@@ -166,13 +173,15 @@ describe('emisión de timbres', () => {
 			const bought = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 10 })
+				body: JSON.stringify({ feeCode: '31.8' })
 			});
 			assert.equal(bought.status, 201);
 			const body = await bought.json();
-			assert.equal(body.stamp.amountEur, '10.00');
+			assert.equal(body.stamp.feeCode, '31.8');
+			assert.match(body.stamp.concept, /Certificación de títulos/);
+			assert.equal(body.stamp.amountEur, '1.20');
 			assert.equal(body.stamp.bcvRate, '41.2500');
-			assert.equal(body.stamp.amountVed, '412.50');
+			assert.equal(body.stamp.amountVed, '49.50');
 			assert.equal(body.stamp.status, 'ACTIVO');
 			assert.equal(body.stamp.rif, 'J-12345678-9');
 			assert.equal(body.stamp.taxpayer, 'Constructora Trujillo C.A.');
@@ -184,9 +193,9 @@ describe('emisión de timbres', () => {
 			assert.equal(claims.uuid, body.stamp.uuid);
 			assert.equal(claims.rif, body.stamp.rif);
 			assert.equal(claims.taxpayer, body.stamp.taxpayer);
-			assert.equal(claims.amount_eur, 10);
+			assert.equal(claims.amount_eur, 1.2);
 			assert.equal(claims.bcv_rate, 41.25);
-			assert.equal(claims.amount_ved, 412.5);
+			assert.equal(claims.amount_ved, 49.5);
 			assert.equal(claims.issued_at, body.stamp.issuedAt);
 
 			const pdfRes = await fetch(`${base}/api/v1/stamps/${body.stamp.uuid}/pdf`, {
@@ -224,15 +233,29 @@ describe('emisión de timbres', () => {
 			);
 			assert.equal(audits.rows[0].n, 1);
 
+			const catalog = await fetch(`${base}/api/v1/stamps/fees`, {
+				headers: { cookie: ownerCookie }
+			});
+			assert.equal(catalog.status, 200);
+			const fees = await catalog.json();
+			assert.equal(fees.fees.length, 196);
+			const diploma = fees.fees.find((fee) => fee.code === '31.8');
+			assert.equal(diploma.timesOfficialRate, '1.20');
+			assert.equal(
+				fees.fees.some((fee) => fee.code === '34.8' || fee.code === '36.3'),
+				false
+			);
+
 			const rounded = await fetch(`${base}/api/v1/stamps/purchase`, {
 				method: 'POST',
 				headers: { cookie: ownerCookie, 'content-type': 'application/json' },
-				body: JSON.stringify({ amountEur: 1.01 })
+				body: JSON.stringify({ feeCode: '31.9' })
 			});
 			assert.equal(rounded.status, 201);
 			const second = await rounded.json();
-			assert.equal(second.stamp.amountVed, '41.66');
-			assert.equal(verifyStampQr(second.stamp.qrPayload).amount_ved, 41.66);
+			assert.equal(second.stamp.amountEur, '2.50');
+			assert.equal(second.stamp.amountVed, '103.13');
+			assert.equal(verifyStampQr(second.stamp.qrPayload).amount_ved, 103.13);
 		} finally {
 			client.release();
 		}
