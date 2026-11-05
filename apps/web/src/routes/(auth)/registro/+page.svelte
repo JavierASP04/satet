@@ -287,7 +287,7 @@
 	.track li.on {
 		background: var(--wine-deep);
 		color: var(--sidebar-text);
-		box-shadow: 0 8px 18px rgb(58 16 24 / 0.22);
+		box-shadow: 0 8px 18px rgb(15 46 34 / 0.22);
 	}
 
 	.track li.done span,

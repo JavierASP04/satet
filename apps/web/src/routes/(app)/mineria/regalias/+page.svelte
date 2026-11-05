@@ -37,6 +37,9 @@
 	const canDeclare = $derived(Boolean(data.taxpayer?.isApproved));
 	const canResolve = $derived(hasPermission(data.user?.role, PERMISSIONS.DECLARACIONES_RESOLVER));
 	const inKind = $derived(paymentForm === 'ESPECIE');
+	const yearTaken = $derived(
+		(data.royalties ?? []).some((royalty) => String(royalty.periodYear) === String(periodYear))
+	);
 </script>
 
 <Screen
@@ -46,8 +49,11 @@
 	ready
 >
 	<div class="stack">
+		{#if data.aviso}
+			<Alert tone={data.avisoTone === 'warn' ? 'warn' : 'danger'}>{data.aviso}</Alert>
+		{/if}
 		{#if form?.message}
-			<Alert tone={form.ok ? 'ok' : 'danger'}>{form.message}</Alert>
+			<Alert tone={form.ok ? 'ok' : form.tone === 'warn' ? 'warn' : 'danger'}>{form.message}</Alert>
 		{/if}
 		{#if data.error}
 			<Alert>{data.error}</Alert>
@@ -103,6 +109,11 @@
 							value={paymentForm}
 							onchange={(event) => (paymentForm = event.currentTarget.value)}
 						/>
+						{#if yearTaken}
+							<Alert tone="warn">
+								Ya hay una regalía declarada para {periodYear}. Una segunda del mismo año no se acepta.
+							</Alert>
+						{/if}
 					</fieldset>
 					{#if inKind}
 						<p class="note">
@@ -166,7 +177,11 @@
 				</tbody>
 			</DataTable>
 		{:else if !data.error}
-			<p class="note">Todavía no hay regalías de esta cuenta.</p>
+			<section class="empty">
+				<p class="kicker">Regalías</p>
+				<h2>Sin regalías declaradas</h2>
+				<p>Cuando presentes la del año, quedará aquí. Solo se admite una por año.</p>
+			</section>
 		{/if}
 	</div>
 </Screen>
@@ -212,6 +227,37 @@
 	.actions {
 		display: flex;
 		margin-top: 1rem;
+	}
+
+	.empty {
+		display: grid;
+		gap: 0.35rem;
+		padding: 1.4rem 1.35rem;
+		border-radius: 1.5rem;
+		background:
+			radial-gradient(420px 160px at 100% 0%, rgb(255 255 255 / 0.08), transparent 60%),
+			var(--wine-deep);
+		color: #fff;
+	}
+
+	.empty .kicker {
+		margin: 0;
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--sidebar-muted);
+	}
+
+	.empty h2 {
+		margin: 0;
+		font-size: 1.7rem;
+	}
+
+	.empty p {
+		margin: 0;
+		max-width: 36rem;
+		color: var(--sidebar-muted);
 	}
 
 	.note {

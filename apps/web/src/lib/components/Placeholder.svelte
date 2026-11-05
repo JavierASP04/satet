@@ -23,7 +23,7 @@
 		background:
 			linear-gradient(var(--wine), var(--wine)) 0 0 / 4px 100% no-repeat,
 			var(--surface);
-		box-shadow: 0 12px 32px rgb(58 16 24 / 0.06);
+		box-shadow: 0 12px 32px rgb(15 46 34 / 0.06);
 	}
 
 	.kicker {

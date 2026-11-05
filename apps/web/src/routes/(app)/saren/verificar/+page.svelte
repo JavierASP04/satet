@@ -1,16 +1,23 @@
 <script>
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
+	import { STAMP_VERIFICATION_CODES } from '@satet/shared';
+	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
+	import Form from '#lib/components/Form.svelte';
 	import Screen from '#lib/components/Screen.svelte';
-	import StaticNotice from '#lib/components/StaticNotice.svelte';
+	import TextAreaField from '#lib/components/TextAreaField.svelte';
 	import TextField from '#lib/components/TextField.svelte';
+	import { formatEur, formatRate, formatRegisteredAt, formatVed } from '#lib/bcv.js';
+	import { stampStatusLabel } from '#lib/stamps.js';
 
-	let uuid = $state('');
-	let office = $state('');
-	let shown = $state(false);
+	let { form } = $props();
+
+	let uuid = $state(untrack(() => form?.values?.uuid || ''));
+	let office = $state(untrack(() => form?.values?.officeName || ''));
+	let qrPayload = $state('');
 	let scanning = $state(false);
 	let scanError = $state('');
-	let scanned = $state(false);
+	let submitting = $state(false);
 	/** @type {HTMLVideoElement | null} */
 	let video = $state(null);
 
@@ -18,9 +25,14 @@
 	let stream = null;
 	let timer = 0;
 
-	const serial = $derived(uuid.trim() || 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6');
+	const headlines = {
+		[STAMP_VERIFICATION_CODES.VALIDATED_AND_CONSUMED]: 'Consumido',
+		[STAMP_VERIFICATION_CODES.ALREADY_USED]: 'Ya usado',
+		[STAMP_VERIFICATION_CODES.ANNULLED]: 'Anulado',
+		[STAMP_VERIFICATION_CODES.NOT_FOUND]: 'No existe'
+	};
 
-	/** El QR del timbre lleva un JSON con `uuid`, o el serial solo. */
+	/** @param {string} text */
 	function serialFromQr(text) {
 		const raw = String(text ?? '').trim();
 		try {
@@ -30,7 +42,14 @@
 			// El código puede ser el serial en texto plano.
 		}
 		const match = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-		return match ? match[0] : raw.slice(0, 36);
+		return match ? match[0] : '';
+	}
+
+	/** @param {Event & { currentTarget: HTMLTextAreaElement }} event */
+	function onQr(event) {
+		qrPayload = event.currentTarget.value;
+		const serial = serialFromQr(qrPayload);
+		if (serial) uuid = serial;
 	}
 
 	function stopScan() {
@@ -47,7 +66,6 @@
 
 	async function startScan() {
 		scanError = '';
-		scanned = false;
 		if (!navigator.mediaDevices?.getUserMedia) {
 			scanError = 'Este navegador no puede usar la cámara. Escribe el serial.';
 			return;
@@ -96,9 +114,8 @@
 					value = jsQR(frame.data, frame.width, frame.height, { inversionAttempts: 'dontInvert' })?.data ?? '';
 				}
 				if (!value) return;
-				uuid = serialFromQr(value);
-				shown = false;
-				scanned = true;
+				qrPayload = value.trim();
+				uuid = serialFromQr(qrPayload);
 				stopScan();
 			} catch {
 				// Un frame ilegible no corta la lectura.
@@ -112,93 +129,130 @@
 <Screen
 	module="06"
 	title="Verificar timbre"
-	description="El serial o el QR se valida y el timbre se consume una sola vez."
+	description="El serial o el QR firmado se valida y el timbre se consume una sola vez."
 	ready
 >
 	<div class="stack">
-		<StaticNotice />
+		{#if form?.message && !form?.code}
+			<Alert tone="danger">{form.message}</Alert>
+		{/if}
+
 		<section class="sheet">
-			<form
-				onsubmit={(event) => {
-					event.preventDefault();
-					shown = true;
+			<Form
+				method="POST"
+				submit={() => {
+					submitting = true;
+					return async ({ result, update }) => {
+						await update({ reset: false });
+						submitting = false;
+						const values = result.type === 'success' || result.type === 'failure' ? result.data?.values : null;
+						if (values) {
+							uuid = values.uuid || '';
+							office = values.officeName || '';
+						}
+					};
 				}}
 			>
 				<div class="editor">
 					<div class="scan">
 						<Button type="button" variant="ghost" onclick={startScan}>Escanear QR</Button>
-						{#if scanned}
-							<p class="read">Serial leído del QR.</p>
+						{#if qrPayload}
+							<p class="read">QR firmado listo. Se envía el código completo, no solo el serial.</p>
 						{/if}
 					</div>
 					{#if scanError}
 						<p class="warn">{scanError}</p>
 					{/if}
+					<TextAreaField
+						label="Contenido del QR"
+						name="qrPayload"
+						maxlength="4000"
+						rows="4"
+						placeholder="Pega aquí el JSON firmado del código, o escanéalo"
+						value={qrPayload}
+						oninput={onQr}
+					/>
 					<TextField
 						label="Serial del timbre"
 						name="uuid"
 						maxlength="36"
-						placeholder="f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+						placeholder="Escribe el serial o escanéalo"
 						value={uuid}
 						oninput={(event) => {
 							uuid = event.currentTarget.value;
-							scanned = false;
+							qrPayload = '';
 						}}
 					/>
 					<TextField
 						label="Oficina SAREN"
-						name="office"
+						name="officeName"
+						required
+						minlength="2"
 						maxlength="255"
-						placeholder="Registro Inmobiliario de Valera"
+						placeholder="Registro Principal de Trujillo"
 						value={office}
 						oninput={(event) => (office = event.currentTarget.value)}
 					/>
 					<div class="actions">
-						<Button>Verificar y consumir</Button>
+						<Button disabled={submitting}>{submitting ? 'Verificando…' : 'Verificar y consumir'}</Button>
+						<Button href="/saren/historial" variant="ghost">Historial</Button>
 					</div>
 				</div>
-			</form>
+			</Form>
 			<aside class="slip">
-				<p class="kicker">Resultado de muestra</p>
-				{#if shown}
-					<p class="total">Válido</p>
-					<p class="formula">
-						El serial {serial} quedaría consumido
-						{#if office.trim()}en {office.trim()}{/if}. No se marcó en el servicio.
-					</p>
+				<p class="kicker">Resultado</p>
+				{#if form?.code}
+					<p class="total">{headlines[form.code] ?? 'Resultado'}</p>
+					<p class="formula">{form.message}</p>
 				{:else}
 					<p class="total">Sin consulta</p>
 					<p class="formula">
-						Un timbre activo pasa a consumido. Si ya se usó o está anulado, la oficina ve la alerta y no se vuelve a aceptar.
+						Un timbre activo pasa a consumido. Si ya se usó o está anulado, la oficina ve la alerta y el timbre no cambia.
 					</p>
 				{/if}
 			</aside>
 		</section>
-		<section class="cases">
-			<article>
-				<p>No existe</p>
-				<strong>Serial desconocido</strong>
-			</article>
-			<article>
-				<p>Ya consumido</p>
-				<strong>Alerta de reutilización</strong>
-			</article>
-			<article>
-				<p>Anulado</p>
-				<strong>Timbre anulado</strong>
-			</article>
-		</section>
+
+		{#if form?.stamp}
+			<section class="facts">
+				<div>
+					<p>Contribuyente</p>
+					<strong>{form.stamp.taxpayer || '—'}</strong>
+					<span>{form.stamp.rif || '—'}</span>
+				</div>
+				<div>
+					<p>Serial</p>
+					<strong class="serial">{form.stamp.uuid}</strong>
+				</div>
+				<div>
+					<p>Monto</p>
+					<strong>{formatEur(form.stamp.amountEur)}</strong>
+					<span>{formatVed(Number(form.stamp.amountVed))} · tasa {formatRate(form.stamp.bcvRate)}</span>
+				</div>
+				<div>
+					<p>Emitido</p>
+					<strong>{formatRegisteredAt(form.stamp.issuedAt)}</strong>
+					<span>Consumido {formatRegisteredAt(form.stamp.consumedAt)}</span>
+				</div>
+				<div>
+					<p>Oficina</p>
+					<strong>{form.stamp.officeName || '—'}</strong>
+					<span>{stampStatusLabel(form.stamp.status)}</span>
+				</div>
+			</section>
+		{/if}
 	</div>
 </Screen>
 
 {#if scanning}
-	<div class="backdrop" role="presentation" onclick={stopScan}>
+	<div class="backdrop">
+		<button type="button" class="scrim" aria-label="Cerrar cámara" onclick={stopScan}></button>
 		<div
 			class="modal"
 			role="dialog"
+			tabindex="-1"
 			aria-modal="true"
 			aria-label="Escanear QR del timbre"
-			onclick={(event) => event.stopPropagation()}
 		>
 			<p class="modal-title">Apunta al código</p>
 			<div class="frame">
@@ -224,12 +278,12 @@
 
 	.sheet {
 		display: grid;
-		grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr);
+		grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 0.75fr);
 		overflow: hidden;
 		border: 1px solid var(--line);
 		border-radius: 1.5rem;
 		background: var(--surface);
-		box-shadow: 0 12px 32px rgb(58 16 24 / 0.06);
+		box-shadow: 0 12px 32px rgb(15 46 34 / 0.06);
 	}
 
 	.editor {
@@ -238,7 +292,8 @@
 		padding: 1.25rem;
 	}
 
-	.scan {
+	.scan,
+	.actions {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.7rem;
@@ -261,6 +316,76 @@
 		font-weight: 650;
 	}
 
+	.slip {
+		display: grid;
+		align-content: end;
+		gap: 0.4rem;
+		padding: 1.35rem 1.25rem;
+		background:
+			radial-gradient(380px 160px at 100% 0%, rgb(255 255 255 / 0.08), transparent 62%),
+			var(--wine-deep);
+		color: #fff;
+	}
+
+	.kicker,
+	.formula {
+		margin: 0;
+		color: var(--sidebar-muted);
+	}
+
+	.kicker {
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.total {
+		margin: 0;
+		font-family: var(--display);
+		font-size: clamp(1.8rem, 3vw, 2.5rem);
+		font-weight: 650;
+		letter-spacing: -0.04em;
+		line-height: 1;
+	}
+
+	.facts {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.75rem;
+	}
+
+	.facts div {
+		display: grid;
+		gap: 0.2rem;
+		padding: 1rem 1.05rem;
+		border: 1px solid var(--line);
+		border-radius: 1.15rem;
+		background: var(--surface);
+	}
+
+	.facts p,
+	.facts span {
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.78rem;
+	}
+
+	.facts p {
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	.facts strong {
+		font-size: 1.05rem;
+		overflow-wrap: anywhere;
+	}
+
+	.serial {
+		font-size: 0.92rem;
+	}
+
 	.backdrop {
 		position: fixed;
 		inset: 0;
@@ -268,10 +393,19 @@
 		display: grid;
 		place-items: center;
 		padding: 1rem;
+	}
+
+	.scrim {
+		position: absolute;
+		inset: 0;
+		border: 0;
 		background: rgb(26 20 18 / 0.62);
+		cursor: pointer;
 	}
 
 	.modal {
+		position: relative;
+		z-index: 1;
 		display: grid;
 		gap: 0.9rem;
 		width: min(100%, 22rem);
@@ -313,74 +447,15 @@
 		box-shadow: 0 0 0 999px rgb(26 20 18 / 0.42);
 	}
 
-	.actions {
-		display: flex;
-	}
-
-	.slip {
-		display: grid;
-		align-content: end;
-		gap: 0.4rem;
-		padding: 1.35rem 1.25rem;
-		background:
-			radial-gradient(380px 160px at 100% 0%, rgb(255 255 255 / 0.08), transparent 62%),
-			var(--wine-deep);
-		color: #fff;
-	}
-
-	.kicker,
-	.formula {
-		margin: 0;
-		color: var(--sidebar-muted);
-	}
-
-	.kicker {
-		font-size: 0.72rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.total {
-		margin: 0;
-		font-family: var(--display);
-		font-size: clamp(1.8rem, 3vw, 2.5rem);
-		font-weight: 650;
-		letter-spacing: -0.04em;
-		line-height: 1;
-	}
-
-	.cases {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 0.75rem;
-	}
-
-	.cases article {
-		padding: 1rem 1.05rem;
-		border: 1px solid var(--line);
-		border-radius: 1.15rem;
-		background: var(--surface);
-	}
-
-	.cases p {
-		margin: 0;
-		color: var(--muted);
-		font-size: 0.72rem;
-		font-weight: 700;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-	}
-
-	.cases strong {
-		display: block;
-		margin-top: 0.35rem;
-		font-size: 1.05rem;
+	@media (max-width: 980px) {
+		.facts {
+			grid-template-columns: 1fr 1fr;
+		}
 	}
 
 	@media (max-width: 860px) {
 		.sheet,
-		.cases {
+		.facts {
 			grid-template-columns: 1fr;
 		}
 	}

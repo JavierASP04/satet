@@ -12,7 +12,9 @@ async function loadAccounts(fetch, cookies) {
 	return body.accounts ?? [];
 }
 
-export const load = async ({ fetch, cookies, parent }) => {
+export const load = async ({ fetch, cookies, parent, url }) => {
+	const aviso = url.searchParams.get('aviso');
+	const avisoTone = url.searchParams.get('tono') === 'warn' ? 'warn' : 'danger';
 	const { taxpayer } = await parent();
 	const [accounts, royaltiesResponse] = await Promise.all([
 		taxpayer?.isApproved ? loadAccounts(fetch, cookies) : Promise.resolve([]),
@@ -22,11 +24,13 @@ export const load = async ({ fetch, cookies, parent }) => {
 		return {
 			accounts,
 			royalties: [],
+			aviso,
+			avisoTone,
 			error: await readApiError(royaltiesResponse, 'No se pudieron cargar las regalías.')
 		};
 	}
 	const body = await royaltiesResponse.json();
-	return { accounts, royalties: body.royalties ?? [], error: null };
+	return { accounts, royalties: body.royalties ?? [], error: null, aviso, avisoTone };
 };
 
 export const actions = {
@@ -70,6 +74,7 @@ export const actions = {
 		if (!response.ok) {
 			return fail(response.status, {
 				values,
+				tone: response.status === 409 ? 'warn' : 'danger',
 				message:
 					response.status >= 500
 						? 'No se pudo completar la operación. Revisa que la base de datos esté en marcha.'
@@ -94,6 +99,7 @@ export const actions = {
 		});
 		if (!response.ok) {
 			return fail(response.status, {
+				tone: response.status === 409 ? 'warn' : 'danger',
 				message: await readApiError(response, 'No se pudo resolver la regalía.')
 			});
 		}
