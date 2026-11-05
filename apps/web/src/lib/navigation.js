@@ -48,7 +48,11 @@ export const NAVIGATION = [
 		module: '03',
 		label: 'Impuesto 1 x 1000',
 		items: [
-			{ label: 'Retenciones', href: '/uno-por-mil' },
+			{
+				label: 'Retenciones',
+				href: '/uno-por-mil',
+				permissions: [P.DECLARACIONES_CREAR, P.DECLARACIONES_SUPERVISAR, P.DECLARACIONES_RESOLVER]
+			},
 			{ label: 'Cargar órdenes', href: '/uno-por-mil/cargar', permission: P.DECLARACIONES_CREAR }
 		]
 	},
@@ -64,6 +68,7 @@ export const NAVIGATION = [
 		module: '05',
 		label: 'Pagos',
 		items: [
+			{ label: 'Mis pagos', href: '/pagos/mios', permission: P.PAGOS_REGISTRAR },
 			{ label: 'Registrar pago', href: '/pagos/registrar', permission: P.PAGOS_REGISTRAR },
 			{ label: 'Conciliación', href: '/pagos/conciliacion', permission: P.PAGOS_CONCILIAR }
 		]
@@ -81,15 +86,26 @@ export const NAVIGATION = [
 		label: 'Gestión',
 		items: [
 			{ label: 'Dashboard POA', href: '/reportes', permission: P.DASHBOARD_POA },
+			{
+				label: 'Cuentas institucionales',
+				href: '/cuentas',
+				permission: P.CUENTAS_GESTIONAR
+			},
 			{ label: 'Auditoría', href: '/auditoria', permission: P.AUDITORIA_CONSULTAR }
 		]
 	}
 ];
 
+/** @param {{ permission?: string, permissions?: string[] }} item @param {string} role */
+function itemVisible(item, role) {
+	if (item.permissions?.length) return item.permissions.some((permission) => hasPermission(role, permission));
+	return !item.permission || hasPermission(role, item.permission);
+}
+
 /** @param {string} role */
 export function visibleNavigation(role) {
 	return NAVIGATION.map((group) => ({
 		...group,
-		items: group.items.filter((item) => !item.permission || hasPermission(role, item.permission))
+		items: group.items.filter((item) => itemVisible(item, role))
 	})).filter((group) => group.items.length > 0);
 }

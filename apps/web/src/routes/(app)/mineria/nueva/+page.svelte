@@ -284,7 +284,7 @@
 		border: 1px solid var(--line);
 		border-radius: 1.35rem;
 		background: var(--surface);
-		box-shadow: 0 12px 32px rgb(58 16 24 / 0.06);
+		box-shadow: 0 12px 32px rgb(15 46 34 / 0.06);
 	}
 
 	.editor {

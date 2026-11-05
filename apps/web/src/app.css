@@ -1,22 +1,22 @@
 :root {
-	--canvas: #f4f1ef;
-	--surface: #fffcfa;
-	--ink: #1a1412;
-	--muted: #6e625c;
-	--line: rgb(58 16 24 / 0.12);
-	--wine: #7a2433;
-	--wine-dark: #5c1524;
-	--wine-deep: #3a1018;
-	--wine-soft: #f3eae7;
-	--sidebar-muted: #d4c6c0;
-	--sidebar-text: #f7f3f1;
+	--canvas: #f2f6f3;
+	--surface: #fbfffc;
+	--ink: #14211a;
+	--muted: #5c6b62;
+	--line: rgb(15 46 34 / 0.12);
+	--wine: #1f6b45;
+	--wine-dark: #174e32;
+	--wine-deep: #0f2e22;
+	--wine-soft: #e5f2eb;
+	--sidebar-muted: #c5d5cb;
+	--sidebar-text: #f4faf6;
 	--danger: #b42318;
 	--danger-soft: #fdeceb;
 	--warning: #9a6700;
 	--warning-soft: #fff6df;
 	--ok: #067647;
 	--ok-soft: #e7f6ee;
-	--shadow: 0 24px 60px rgb(58 16 24 / 0.14);
+	--shadow: 0 24px 60px rgb(15 46 34 / 0.14);
 	--font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
 	--display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
 	color: var(--ink);
@@ -33,7 +33,7 @@ body {
 	margin: 0;
 	min-height: 100vh;
 	background:
-		radial-gradient(820px 380px at -8% -18%, #e5d8d2 0%, transparent 62%),
+		radial-gradient(820px 380px at -8% -18%, #d5e6db 0%, transparent 62%),
 		var(--canvas);
 }
 
