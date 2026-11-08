@@ -1,6 +1,6 @@
 # Cambios de la conversación (13–20 de octubre de 2026)
 
-Registro de lo hecho en SATET durante esta conversación, en la rama `dev-val`. Nada de esto está commiteado por esta jornada.
+Registro de lo hecho en SATET durante esta conversación
 
 La interfaz cubre los módulos 01 a 07. Los servicios reales de esta conversación son el impuesto minero, el presentador del 1 x 1000 y la creación de verificadores SAREN. Pagos, verificación SAREN, reportes y auditoría siguen en pantalla, con una alerta de que son estáticos.
 

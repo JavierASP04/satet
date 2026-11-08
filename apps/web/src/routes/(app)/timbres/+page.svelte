@@ -3,33 +3,23 @@
 	import Button from '#lib/components/Button.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import Screen from '#lib/components/Screen.svelte';
-	import StaticNotice from '#lib/components/StaticNotice.svelte';
-	import { formatCalendarDate, formatRate, formatRegisteredAt } from '#lib/bcv.js';
-
-	const samples = [
-		{
-			uuid: 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6',
-			euros: '10,00 EUR',
-			ved: '9.889,72 VED',
-			status: 'Activo',
-			issued: '15 oct. 2026'
-		},
-		{
-			uuid: 'a12c90b1-4e21-4c55-9d10-11aa22bb33cc',
-			euros: '5,00 EUR',
-			ved: '4.944,86 VED',
-			status: 'Consumido',
-			issued: '2 oct. 2026'
-		}
-	];
+	import { formatCalendarDate, formatEur, formatRate, formatRegisteredAt, formatVed } from '#lib/bcv.js';
+	import { stampStatusLabel } from '#lib/stamps.js';
 
 	let { data } = $props();
+
+	/** @param {string} status */
+	function tone(status) {
+		if (status === 'ACTIVO') return 'ok';
+		if (status === 'ANULADO') return 'bad';
+		return 'used';
+	}
 </script>
 
 <Screen
 	module="04"
 	title="Mis timbres fiscales"
-	description="Tasa oficial con la que el euro del timbre pasa a bolívares."
+	description="Tasa vigente y los timbres emitidos en esta sesión."
 	ready
 >
 	<div class="stack">
@@ -57,16 +47,36 @@
 							<dd>1 EUR = {formatRate(data.rate.rateInVed)} VED</dd>
 						</div>
 					</dl>
-					<Button href="/timbres/comprar">Estimar un monto</Button>
+					<Button href="/timbres/comprar">Comprar timbre</Button>
 				</div>
 			</section>
-			<StaticNotice>
-				El listado de timbres es estático. La tasa de arriba sí es la vigente. El PDF no se descarga.
-			</StaticNotice>
+		{:else}
+			<section class="empty">
+				<p class="kicker">Tasa vigente</p>
+				<h2>Sin tasa vigente</h2>
+				<p>Todavía no hay una tasa EUR/VED registrada para hoy ni para un día anterior.</p>
+				<Button href="/timbres/comprar">Ver el tabulador</Button>
+			</section>
+		{/if}
+
+		{#if data.stamps.length === 0}
+			<section class="empty">
+				<p class="kicker">Esta sesión</p>
+				<h2>Sin timbres emitidos</h2>
+				<p>
+					Los timbres que emitas quedan aquí, con su PDF, hasta que cierres la sesión. El servicio no
+					entrega el historial de la cuenta.
+				</p>
+			</section>
+		{:else}
+			<p class="note">
+				{data.stamps.length === 1 ? '1 timbre emitido' : `${data.stamps.length} timbres emitidos`} en
+				esta sesión. Al salir se borran de esta lista.
+			</p>
 			<DataTable>
 				<thead>
 					<tr>
-						<th>Serial</th>
+						<th>Concepto</th>
 						<th>Euros</th>
 						<th>Bolívares</th>
 						<th>Emitido</th>
@@ -75,24 +85,31 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each samples as stamp (stamp.uuid)}
+					{#each data.stamps as stamp (stamp.uuid)}
 						<tr>
-							<td class="serial">{stamp.uuid}</td>
-							<td>{stamp.euros}</td>
-							<td>{stamp.ved}</td>
-							<td>{stamp.issued}</td>
-							<td><span class="pill" class:used={stamp.status === 'Consumido'}>{stamp.status}</span></td>
-							<td><button type="button">PDF</button></td>
+							<td>
+								<p class="concept">{stamp.concept || stamp.feeCode}</p>
+								<p class="serial">{stamp.feeCode} · {stamp.uuid}</p>
+								{#if stamp.taxpayer || stamp.rif}
+									<p class="serial">{stamp.taxpayer}{stamp.rif ? ` · ${stamp.rif}` : ''}</p>
+								{/if}
+							</td>
+							<td>{formatEur(stamp.amountEur)}</td>
+							<td>
+								{formatVed(Number(stamp.amountVed))}
+								{#if stamp.bcvRate}
+									<p class="serial">Tasa {formatRate(stamp.bcvRate)}</p>
+								{/if}
+							</td>
+							<td>{formatRegisteredAt(stamp.issuedAt)}</td>
+							<td>
+								<span class="pill {tone(stamp.status)}">{stampStatusLabel(stamp.status)}</span>
+							</td>
+							<td><a href="/timbres/{stamp.uuid}/pdf">PDF</a></td>
 						</tr>
 					{/each}
 				</tbody>
 			</DataTable>
-		{:else}
-			<section class="empty">
-				<p class="kicker">Tasa vigente</p>
-				<h2>Sin tasa vigente</h2>
-				<p>Todavía no hay una tasa EUR/VED registrada para hoy ni para un día anterior.</p>
-			</section>
 		{/if}
 	</div>
 </Screen>
@@ -110,7 +127,7 @@
 		border: 1px solid var(--line);
 		border-radius: 1.5rem;
 		background: var(--surface);
-		box-shadow: 0 12px 32px rgb(58 16 24 / 0.06);
+		box-shadow: 0 12px 32px rgb(15 46 34 / 0.06);
 	}
 
 	.figure {
@@ -180,12 +197,15 @@
 	}
 
 	.empty {
-		max-width: 34rem;
+		display: grid;
+		justify-items: start;
+		gap: 0.35rem;
+		max-width: 40rem;
 		padding: 1.4rem 1.35rem;
 		border: 1px solid var(--line);
 		border-radius: 1.5rem;
 		background: var(--surface);
-		box-shadow: 0 12px 32px rgb(58 16 24 / 0.06);
+		box-shadow: 0 12px 32px rgb(15 46 34 / 0.06);
 	}
 
 	.empty .kicker {
@@ -193,17 +213,30 @@
 	}
 
 	.empty h2 {
-		margin: 0.7rem 0 0.4rem;
+		margin: 0.35rem 0 0.15rem;
 		font-size: 1.55rem;
 	}
 
-	.empty p:last-child {
-		margin: 0;
+	.empty p {
+		margin: 0 0 0.55rem;
 		color: var(--muted);
 	}
 
+	.note {
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.92rem;
+	}
+
+	.concept {
+		margin: 0;
+		font-weight: 650;
+	}
+
 	.serial {
-		font-size: 0.82rem;
+		margin: 0.2rem 0 0;
+		color: var(--muted);
+		font-size: 0.78rem;
 		overflow-wrap: anywhere;
 	}
 
@@ -211,10 +244,13 @@
 		display: inline-flex;
 		padding: 0.28rem 0.7rem;
 		border-radius: 999px;
-		background: var(--ok-soft);
-		color: var(--ok);
 		font-size: 0.78rem;
 		font-weight: 700;
+	}
+
+	.pill.ok {
+		background: var(--ok-soft);
+		color: var(--ok);
 	}
 
 	.pill.used {
@@ -222,13 +258,9 @@
 		color: var(--wine-dark);
 	}
 
-	button {
-		border: 0;
-		background: transparent;
-		color: var(--wine-dark);
-		font: inherit;
-		font-weight: 700;
-		cursor: pointer;
+	.pill.bad {
+		background: var(--danger-soft);
+		color: var(--danger);
 	}
 
 	@media (max-width: 800px) {

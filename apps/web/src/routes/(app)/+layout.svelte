@@ -282,7 +282,7 @@
 		border: 1px solid var(--line);
 		border-radius: 999px;
 		background: var(--surface);
-		box-shadow: 0 10px 28px rgb(58 16 24 / 0.05);
+		box-shadow: 0 10px 28px rgb(15 46 34 / 0.05);
 	}
 
 	.who {

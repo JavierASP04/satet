@@ -3,7 +3,9 @@ import { apiFetch, readApiError } from '#lib/server/api.js';
 import { text } from '#lib/server/payment.js';
 import { sessionHeaders } from '#lib/server/session.js';
 
-export const load = async ({ params, fetch, cookies }) => {
+export const load = async ({ params, fetch, cookies, url }) => {
+	const aviso = url.searchParams.get('aviso');
+	const avisoTone = url.searchParams.get('tono') === 'warn' ? 'warn' : 'danger';
 	const response = await apiFetch(fetch, `/mining/declarations/${params.id}`, {
 		headers: sessionHeaders(cookies)
 	});
@@ -11,6 +13,8 @@ export const load = async ({ params, fetch, cookies }) => {
 		const fallback = 'No se pudo cargar la declaración.';
 		return {
 			declaration: null,
+			aviso,
+			avisoTone,
 			error:
 				response.status >= 500
 					? 'No se pudo completar la operación. Revisa que la base de datos esté en marcha.'
@@ -18,7 +22,7 @@ export const load = async ({ params, fetch, cookies }) => {
 		};
 	}
 	const body = await response.json();
-	return { declaration: body.declaration ?? null, error: null };
+	return { declaration: body.declaration ?? null, error: null, aviso, avisoTone };
 };
 
 export const actions = {
@@ -36,6 +40,7 @@ export const actions = {
 		});
 		if (!response.ok) {
 			return fail(response.status, {
+				tone: response.status === 409 ? 'warn' : 'danger',
 				message: await readApiError(response, 'No se pudo resolver la declaración.')
 			});
 		}
