@@ -6,6 +6,23 @@
 
 	let { data } = $props();
 
+	/** @type {HTMLIFrameElement | null} */
+	let informe = $state(null);
+	let previewOpen = $state(false);
+
+	function openPreview() {
+		previewOpen = true;
+	}
+
+	function closePreview() {
+		previewOpen = false;
+	}
+
+	function printInforme() {
+		informe?.blur();
+		window.print();
+	}
+
 	const summary = $derived(data.summary);
 
 	/** @param {string} value */
@@ -220,6 +237,12 @@
 	});
 </script>
 
+<svelte:window
+	onkeydown={(event) => {
+		if (previewOpen && event.key === 'Escape') closePreview();
+	}}
+/>
+
 <Screen
 	module="07"
 	title="Dashboard POA"
@@ -244,13 +267,91 @@
 					<p>No hay meta ni porcentaje de cumplimiento: la especificación no trae esa cifra.</p>
 					<div class="actions">
 						<Button href="/reportes/excel">Exportar Excel</Button>
-						<Button href="/reportes/pdf" variant="ghost">Exportar PDF</Button>
+						<Button type="button" variant="ghost" onclick={openPreview}>Ver informe</Button>
 					</div>
-					<p class="note">
-						El Excel lista todos los pagos, con su estado. El PDF repite este resumen.
-					</p>
+					<p class="note">El Excel lista todos los pagos, con su estado. El informe se abre para verlo e imprimirlo.</p>
 				</div>
 			</section>
+
+			{#if previewOpen}
+				<div class="backdrop">
+					<button type="button" class="scrim" aria-label="Cerrar informe" onclick={closePreview}></button>
+					<section class="preview" role="dialog" aria-modal="true" aria-label="Informe de gestión">
+						<div class="preview-bar">
+							<h2>Informe de gestión</h2>
+							<div class="preview-actions">
+								<button type="button" onclick={printInforme}>Imprimir</button>
+								<button type="button" class="close" onclick={closePreview}>Cerrar</button>
+							</div>
+						</div>
+						<iframe
+							class="sheet"
+							bind:this={informe}
+							title="Informe de gestión"
+							src="/reportes/pdf#toolbar=0&navpanes=0&view=FitH"
+						></iframe>
+				<article class="print-sheet">
+					<header>
+						<img src="/satet-sidebar.png" alt="SATET" />
+						<img src="/gobernacion-blanco.png" alt="Gobierno Bolivariano de Trujillo" />
+					</header>
+					<h2>Informe de gestión</h2>
+					<p>
+						Recaudación de los pagos verificados, en bolívares. La especificación no define la meta
+						proyectada. Este informe no la compara.
+					</p>
+					<h3>Por ramo</h3>
+					<table>
+						<thead>
+							<tr>
+								<th>Ramo</th>
+								<th>Recaudado</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each summary.byBranch as branch (branch.taxType)}
+								<tr>
+									<td>{branch.label}</td>
+									<td>{formatVedText(branch.totalVed)}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+					<h3>Por mes</h3>
+					{#if summary.months.length === 0}
+						<p>Sin pagos verificados.</p>
+					{:else}
+						<table>
+							<thead>
+								<tr>
+									<th>Mes</th>
+									{#each summary.byBranch as branch (branch.taxType)}
+										<th>{branch.label}</th>
+									{/each}
+									<th>Total</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each summary.months as month (month.month)}
+									<tr>
+										<td>{monthLabel(month.month)}</td>
+										{#each month.byBranch as branch (branch.taxType)}
+											<td>{formatVedText(branch.totalVed)}</td>
+										{/each}
+										<td>{formatVedText(month.totalVed)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{/if}
+					<p class="total">
+						<span>Total acumulado</span>
+						<strong>{formatVedText(summary.totalVed)}</strong>
+					</p>
+				</article>
+					</section>
+				</div>
+			{/if}
 
 			<section class="branches">
 				{#each summary.byBranch as branch (branch.taxType)}
@@ -542,6 +643,214 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.55rem;
+	}
+
+	.backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 40;
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+	}
+
+	.scrim {
+		position: absolute;
+		inset: 0;
+		border: 0;
+		background: rgb(15 46 34 / 0.55);
+		cursor: pointer;
+	}
+
+	.preview {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		width: min(100%, 64rem);
+		height: min(88vh, 52rem);
+		overflow: hidden;
+		border: 1px solid var(--line);
+		border-radius: 1.35rem;
+		background: var(--surface);
+		box-shadow: 0 24px 60px rgb(15 46 34 / 0.28);
+	}
+
+	.preview-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.85rem 1rem;
+		border-bottom: 1px solid var(--line);
+		background: var(--canvas);
+	}
+
+	.preview-bar h2 {
+		margin: 0;
+		font-size: 1.05rem;
+	}
+
+	.preview-actions {
+		display: flex;
+		gap: 0.45rem;
+	}
+
+	.preview-bar button {
+		padding: 0.45rem 0.9rem;
+		border: 0;
+		border-radius: 999px;
+		background: var(--wine);
+		color: #fff;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.preview-bar .close {
+		border: 1px solid var(--line);
+		background: transparent;
+		color: var(--ink);
+	}
+
+	.sheet {
+		display: block;
+		flex: 1;
+		width: 100%;
+		min-height: 0;
+		border: 0;
+		background: #fff;
+	}
+
+	.print-sheet {
+		display: none;
+	}
+
+	@media print {
+		:global(html),
+		:global(body) {
+			background: #fff !important;
+		}
+
+		:global(aside),
+		:global(.topbar),
+		:global(.banner),
+		:global(header.head) {
+			display: none !important;
+		}
+
+		:global(.shell),
+		:global(.workspace) {
+			display: block !important;
+			background: #fff !important;
+		}
+
+		.board,
+		.branches,
+		.charts,
+		.months,
+		.preview-bar,
+		.sheet,
+		.scrim {
+			display: none !important;
+		}
+
+		.backdrop {
+			position: static;
+			display: block;
+			padding: 0;
+		}
+
+		.preview {
+			width: auto;
+			height: auto;
+			border: 0;
+			border-radius: 0;
+			box-shadow: none;
+		}
+
+		.print-sheet {
+			display: block;
+			color: #14211a;
+		}
+
+		.print-sheet header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 1.4rem;
+			padding: 0.8rem 1rem;
+			background: #0f2e22 !important;
+			-webkit-print-color-adjust: exact;
+			print-color-adjust: exact;
+		}
+
+		.print-sheet header img {
+			width: auto;
+			-webkit-print-color-adjust: exact;
+			print-color-adjust: exact;
+		}
+
+		.print-sheet header img:first-child {
+			height: 3.2rem;
+		}
+
+		.print-sheet header img:last-child {
+			height: 1.7rem;
+		}
+
+		.print-sheet h2,
+		.print-sheet h3,
+		.print-sheet p {
+			margin: 0 0 0.7rem;
+		}
+
+		.print-sheet h2 {
+			font-size: 1.4rem;
+		}
+
+		.print-sheet h3 {
+			margin-top: 1.1rem;
+			font-size: 0.78rem;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+		}
+
+		.print-sheet table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+
+		.print-sheet th,
+		.print-sheet td {
+			padding: 0.4rem 0.5rem;
+			border-bottom: 1px solid #d5e6db;
+			text-align: left;
+		}
+
+		.print-sheet th {
+			background: #0f2e22 !important;
+			color: #fff;
+			-webkit-print-color-adjust: exact;
+			print-color-adjust: exact;
+		}
+
+		.print-sheet td:not(:first-child),
+		.print-sheet th:not(:first-child) {
+			text-align: right;
+		}
+
+		.print-sheet .total {
+			display: flex;
+			justify-content: space-between;
+			margin-top: 1rem;
+			padding: 0.7rem 0.8rem;
+			background: #1f6b45 !important;
+			color: #fff;
+			font-weight: 700;
+			-webkit-print-color-adjust: exact;
+			print-color-adjust: exact;
+		}
 	}
 
 	.branches {

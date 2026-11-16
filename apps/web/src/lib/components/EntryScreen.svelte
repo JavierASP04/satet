@@ -1,17 +1,12 @@
 <script>
-	import { APP_NAME } from '@satet/shared';
-
 	let { title = '', lede = '', wide = false, toolbar, children } = $props();
 </script>
 
 <main class="screen">
 	<section class="sheet" class:wide>
 		<header>
-			<span class="badge" aria-hidden="true">S</span>
-			<div>
-				<a href="/">{APP_NAME}</a>
-				<p>Estado Trujillo</p>
-			</div>
+			<img class="satet" src="/Logo%20Satet%20sin%20fondo.png" alt="SATET" />
+			<img class="gov" src="/gobernacion-verde.png" alt="Gobierno Bolivariano de Trujillo" />
 		</header>
 		{#if toolbar}
 			{@render toolbar()}
@@ -36,9 +31,8 @@
 		gap: 0.9rem;
 		padding: 1.75rem 1rem;
 		background:
-			radial-gradient(680px 280px at 50% -8%, rgb(122 36 51 / 0.7), transparent 62%),
-			radial-gradient(420px 320px at 100% 110%, rgb(92 21 36 / 0.55), transparent 60%),
-			var(--wine-deep);
+			linear-gradient(180deg, rgb(15 46 34 / 0.72), rgb(15 46 34 / 0.88)),
+			url('/landing/satet%20(3).jpeg') center / cover no-repeat;
 	}
 
 	.sheet {
@@ -75,34 +69,29 @@
 	header {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		justify-content: space-between;
+		gap: 0.85rem;
 		padding-bottom: 0.85rem;
 		border-bottom: 1px solid var(--line);
 	}
 
-	.badge {
-		display: grid;
-		width: 2.4rem;
-		height: 2.4rem;
-		place-items: center;
-		border-radius: 999px;
-		background: var(--wine-deep);
-		color: var(--sidebar-text);
-		font-weight: 700;
+	header img {
+		display: block;
+		width: auto;
+		background: transparent;
+		object-fit: contain;
 	}
 
-	header a {
-		color: var(--wine-deep);
-		font-size: 0.95rem;
-		font-weight: 750;
-		letter-spacing: 0.08em;
-		text-decoration: none;
+	.satet {
+		height: 3.35rem;
+		max-width: 46%;
+		object-position: left center;
 	}
 
-	header p {
-		margin: 0.05rem 0 0;
-		color: var(--muted);
-		font-size: 0.78rem;
+	.gov {
+		height: 2.15rem;
+		max-width: 50%;
+		object-position: right center;
 	}
 
 	h1 {

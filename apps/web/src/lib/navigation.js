@@ -1,4 +1,4 @@
-import { hasPermission, PERMISSIONS } from '@satet/shared';
+import { hasPermission, PERMISSIONS, ROLES } from '@satet/shared';
 
 const P = PERMISSIONS;
 
@@ -14,7 +14,7 @@ export const NAVIGATION = [
 		items: [
 			{ label: 'Mi perfil', href: '/perfil', permission: P.PERFIL_GESTIONAR },
 			{
-				label: 'Solicitudes pendientes',
+				label: 'Solicitudes de expediente',
 				href: '/contribuyentes/pendientes',
 				permission: P.CONTRIBUYENTES_APROBAR
 			},
@@ -29,9 +29,24 @@ export const NAVIGATION = [
 		module: '02',
 		label: 'Impuesto minero',
 		items: [
-			{ label: 'Mis declaraciones', href: '/mineria', permission: P.DECLARACIONES_CREAR },
-			{ label: 'Nueva declaración', href: '/mineria/nueva', permission: P.DECLARACIONES_CREAR },
-			{ label: 'Regalías', href: '/mineria/regalias', permission: P.DECLARACIONES_CREAR },
+			{
+				label: 'Mis declaraciones',
+				href: '/mineria',
+				permission: P.DECLARACIONES_CREAR,
+				excludeRoles: [ROLES.ADMIN_SISTEMA]
+			},
+			{
+				label: 'Nueva declaración',
+				href: '/mineria/nueva',
+				permission: P.DECLARACIONES_CREAR,
+				excludeRoles: [ROLES.ADMIN_SISTEMA]
+			},
+			{
+				label: 'Regalías',
+				href: '/mineria/regalias',
+				permission: P.DECLARACIONES_CREAR,
+				excludeRoles: [ROLES.ADMIN_SISTEMA]
+			},
 			{
 				label: 'Extemporáneas',
 				href: '/mineria/extemporaneas',
@@ -60,8 +75,23 @@ export const NAVIGATION = [
 		module: '04',
 		label: 'Timbres fiscales',
 		items: [
-			{ label: 'Mis timbres', href: '/timbres', permission: P.TIMBRES_COMPRAR },
-			{ label: 'Comprar timbre', href: '/timbres/comprar', permission: P.TIMBRES_COMPRAR }
+			{
+				label: 'Mis timbres',
+				href: '/timbres',
+				permission: P.TIMBRES_COMPRAR,
+				excludeRoles: [ROLES.ADMIN_SISTEMA]
+			},
+			{
+				label: 'Comprar timbre',
+				href: '/timbres/comprar',
+				permission: P.TIMBRES_COMPRAR,
+				excludeRoles: [ROLES.ADMIN_SISTEMA]
+			},
+			{
+				label: 'Timbres emitidos',
+				href: '/timbres/emitidos',
+				roles: [ROLES.ADMIN_SISTEMA]
+			}
 		]
 	},
 	{
@@ -96,8 +126,13 @@ export const NAVIGATION = [
 	}
 ];
 
-/** @param {{ permission?: string, permissions?: string[] }} item @param {string} role */
+/**
+ * @param {{ permission?: string, permissions?: string[], roles?: string[], excludeRoles?: string[] }} item
+ * @param {string} role
+ */
 function itemVisible(item, role) {
+	if (item.excludeRoles?.includes(role)) return false;
+	if (item.roles?.length && !item.roles.includes(role)) return false;
 	if (item.permissions?.length) return item.permissions.some((permission) => hasPermission(role, permission));
 	return !item.permission || hasPermission(role, item.permission);
 }

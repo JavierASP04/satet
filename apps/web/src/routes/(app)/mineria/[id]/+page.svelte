@@ -4,6 +4,7 @@
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import { confirmSubmit } from '#lib/confirm-decision.js';
 	import TextField from '#lib/components/TextField.svelte';
 	import { ACTIVITY_LABELS, STATUS_LABELS, money, periodLabel, volume, when } from '#lib/mining.js';
 
@@ -107,11 +108,11 @@
 						</p>
 					{/if}
 					{#if canResolve && declaration.status === 'PENDIENTE'}
-						<form method="POST" action="?/resolve" use:enhance>
+						<form method="POST" action="?/resolve" use:enhance use:confirmSubmit>
 							<input type="hidden" name="decision" value="APROBAR" />
 							<Button>Aprobar</Button>
 						</form>
-						<form class="reject" method="POST" action="?/resolve" use:enhance>
+						<form class="reject" method="POST" action="?/resolve" use:enhance use:confirmSubmit>
 							<input type="hidden" name="decision" value="RECHAZAR" />
 							<TextField
 								label="Motivo del rechazo"

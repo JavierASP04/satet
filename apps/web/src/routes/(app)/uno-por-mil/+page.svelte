@@ -4,6 +4,7 @@
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import { confirmSubmit } from '#lib/confirm-decision.js';
 	import TextField from '#lib/components/TextField.svelte';
 	import { STATUS_LABELS, formatCalendarDate, formatVed } from '#lib/one-per-thousand.js';
 
@@ -151,54 +152,66 @@
 			<ul class="cards">
 				{#each filings as group (group.id)}
 					<li class="card {tone(group.status)}">
-						<div class="top">
+						<div class="sheet">
 							<div>
 								<p class="kicker">
 									{#if data.scope === 'all' && group.companyName}
 										{group.companyName}
 									{:else}
-										Carga
+										Planilla
 									{/if}
 								</p>
 								<p class="subject">
 									{group.orders.length === 1
 										? `Orden ${group.orders[0].paymentOrderNumber}`
-										: `${group.orders.length} órdenes`}
+										: `${group.orders.length} órdenes de pago`}
 								</p>
 								{#if data.scope === 'all' && group.rifNumber}
 									<p class="rif">{group.rifNumber}</p>
 								{/if}
 							</div>
-							<span class="pill {tone(group.status)}"
-								>{STATUS_LABELS[group.status] ?? group.status}</span
-							>
+							<div class="sheet-total">
+								<span class="pill {tone(group.status)}"
+									>{STATUS_LABELS[group.status] ?? group.status}</span
+								>
+								<p class="amount">{formatVed(filingTax(group))}</p>
+								<p class="caption">impuesto retenido</p>
+							</div>
 						</div>
-						<p class="amount">{formatVed(filingTax(group))}</p>
-						<ul class="orders">
-							{#each group.orders as order (order.id)}
-								<li>
-									<div>
-										<p class="order">{order.paymentOrderNumber}</p>
-										<p class="entity">{order.entityName}</p>
-									</div>
-									<div class="facts">
-										<p>{formatVed(order.executedAmountVed)}</p>
-										<p>Impuesto {formatVed(order.taxAmountVed)}</p>
-										<p>{formatCalendarDate(order.executionDate)}</p>
-									</div>
-								</li>
-							{/each}
-						</ul>
+						<div class="table-wrap">
+							<table>
+								<thead>
+									<tr>
+										<th>Orden</th>
+										<th>Ente o banco</th>
+										<th class="num">Ejecutado</th>
+										<th class="num">Impuesto</th>
+										<th class="num">Fecha</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each group.orders as order (order.id)}
+										<tr>
+											<td class="order">{order.paymentOrderNumber}</td>
+											<td class="entity">{order.entityName}</td>
+											<td class="num">{formatVed(order.executedAmountVed)}</td>
+											<td class="num tax">{formatVed(order.taxAmountVed)}</td>
+											<td class="num">{formatCalendarDate(order.executionDate)}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
 						{#if group.filingId && group.status === 'VERIFICADO'}
 							<a class="planilla" href="/uno-por-mil/cargas/{group.filingId}/planilla">Planilla</a>
 						{:else if canResolve && group.filingId && group.status === 'PENDIENTE'}
 							<div class="actions">
-								<form method="POST" action="?/resolve" use:enhance>
+								<form method="POST" action="?/resolve" use:enhance use:confirmSubmit>
 									<input type="hidden" name="filingId" value={group.filingId} />
 									<input type="hidden" name="decision" value="APROBAR" />
 									<Button>Aprobar</Button>
 								</form>
-								<form class="reject" method="POST" action="?/resolve" use:enhance>
+								<form class="reject" method="POST" action="?/resolve" use:enhance use:confirmSubmit>
 									<input type="hidden" name="filingId" value={group.filingId} />
 									<input type="hidden" name="decision" value="RECHAZAR" />
 									<TextField
@@ -347,11 +360,19 @@
 		border-left-color: var(--danger);
 	}
 
-	.top {
+	.sheet {
 		display: flex;
 		justify-content: space-between;
 		gap: 1rem;
-		align-items: start;
+		align-items: end;
+		padding-bottom: 0.85rem;
+		border-bottom: 1px solid var(--line);
+	}
+
+	.sheet-total {
+		display: grid;
+		justify-items: end;
+		gap: 0.28rem;
 	}
 
 	.subject {
@@ -372,35 +393,49 @@
 		line-height: 1;
 	}
 
-	.orders {
-		display: grid;
-		gap: 0.55rem;
-		margin: 0;
-		padding: 0;
-		list-style: none;
+	.table-wrap {
+		overflow-x: auto;
 	}
 
-	.orders li {
-		display: flex;
-		justify-content: space-between;
-		gap: 1rem;
-		padding: 0.75rem 0.9rem;
-		border-radius: 1rem;
-		background: var(--canvas);
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.92rem;
+	}
+
+	th {
+		padding: 0.35rem 0.7rem 0.55rem 0;
+		color: var(--wine-dark);
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-align: left;
+		text-transform: uppercase;
+	}
+
+	td {
+		padding: 0.72rem 0.7rem 0.72rem 0;
+		border-top: 1px solid var(--line);
+		vertical-align: top;
+	}
+
+	.num {
+		text-align: right;
+		white-space: nowrap;
+	}
+
+	th:last-child,
+	td:last-child {
+		padding-right: 0;
 	}
 
 	.order {
-		font-size: 1.05rem;
+		font-size: 1rem;
 		letter-spacing: -0.02em;
 	}
 
-	.facts {
-		text-align: right;
-	}
-
-	.facts p:first-child {
-		color: var(--ink);
-		font-weight: 650;
+	.tax {
+		font-weight: 700;
 	}
 
 	.pill {
@@ -510,14 +545,18 @@
 
 	@media (max-width: 720px) {
 		.actions,
-		.reject,
-		.orders li {
+		.reject {
 			grid-template-columns: 1fr;
 			display: grid;
 		}
 
-		.facts {
-			text-align: left;
+		.sheet {
+			display: grid;
+			justify-items: start;
+		}
+
+		.sheet-total {
+			justify-items: start;
 		}
 	}
 </style>

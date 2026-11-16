@@ -65,8 +65,8 @@
 		{#if !data.rate && !data.error}
 			<Alert tone="warn">Sin tasa vigente no se puede calcular ni emitir el timbre.</Alert>
 		{/if}
-		{#if form?.message}
-			<Alert tone={form.ok ? 'ok' : 'danger'}>{form.message}</Alert>
+		{#if form?.message && !form.ok}
+			<Alert>{form.message}</Alert>
 		{/if}
 
 		{#if form?.ok && form.stamp}
@@ -109,6 +109,7 @@
 						<Button href="/timbres/{form.stamp.uuid}/pdf">Descargar PDF</Button>
 						<Button href="/pagos/registrar?timbre={form.stamp.uuid}">Registrar el pago</Button>
 						<Button href="/timbres" variant="ghost">Ver en mis timbres</Button>
+						<Button href="/timbres/comprar" variant="ghost">Emitir otro</Button>
 					</div>
 				</div>
 				{#if form.qrDataUrl}
@@ -118,9 +119,7 @@
 					</figure>
 				{/if}
 			</section>
-		{/if}
-
-		{#if !data.feesError}
+		{:else if !data.feesError}
 			<section class="sheet">
 				<div class="editor">
 					<TextField

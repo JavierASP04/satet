@@ -15,3 +15,9 @@ bankAccountsRouter.post(
 	validate(controller.createAccountSchema),
 	controller.create
 );
+bankAccountsRouter.delete(
+	'/:id',
+	authorize(PERMISSIONS.CUENTAS_GESTIONAR),
+	validate(controller.accountIdParamsSchema, 'params'),
+	controller.remove
+);

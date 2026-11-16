@@ -2,7 +2,9 @@
 	import SelectField from '#lib/components/SelectField.svelte';
 	import TextField from '#lib/components/TextField.svelte';
 
-	let { accounts = [], reference = '', accountId = '' } = $props();
+	let { accounts = [], reference = '', accountId = '', onAccount } = $props();
+
+	let chosen = $state('');
 
 	const options = $derived(
 		accounts.map((account) => ({
@@ -10,6 +12,12 @@
 			label: `${account.bankName} · ${account.accountNumber}`
 		}))
 	);
+	const currentId = $derived(chosen || accountId || options[0]?.value || '');
+	const current = $derived(accounts.find((account) => account.id === currentId) ?? null);
+
+	$effect(() => {
+		onAccount?.(current);
+	});
 </script>
 
 <fieldset>
@@ -31,7 +39,8 @@
 				name="bankAccountId"
 				required
 				{options}
-				value={accountId || options[0].value}
+				value={currentId}
+				onchange={(event) => (chosen = event.currentTarget.value)}
 			/>
 		{/if}
 		<label class="file">

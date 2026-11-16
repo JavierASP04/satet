@@ -3,9 +3,14 @@ import { sessionHeaders } from '#lib/server/session.js';
 
 /** @param {typeof fetch} fetch @param {import('@sveltejs/kit').Cookies} cookies */
 export async function loadCurrentRate(fetch, cookies) {
-	const response = await apiFetch(fetch, '/bcv-rate/current', {
-		headers: sessionHeaders(cookies)
-	});
+	let response;
+	try {
+		response = await apiFetch(fetch, '/bcv-rate/current', {
+			headers: sessionHeaders(cookies)
+		});
+	} catch {
+		return { rate: null, error: 'No se pudo contactar la API.' };
+	}
 	if (response.status === 404) return { rate: null, error: null };
 	if (!response.ok) {
 		const fallback = 'No se pudo consultar la tasa BCV.';

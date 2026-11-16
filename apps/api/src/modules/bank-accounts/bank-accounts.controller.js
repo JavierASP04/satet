@@ -18,6 +18,10 @@ export const createAccountSchema = z.object({
 	accountType: z.enum(taxTypes)
 });
 
+export const accountIdParamsSchema = z.object({
+	id: z.uuid('Identificador inválido.')
+});
+
 /** @param {Record<string, any>} row */
 function present(row) {
 	return {
@@ -70,6 +74,53 @@ export async function create(req, res) {
 		return rows[0];
 	});
 	res.status(201).json({ account: present(account) });
+}
+
+/** DELETE /bank-accounts/:id */
+export async function remove(req, res) {
+	await withTransaction(async (client) => {
+		const { rows } = await client.query(
+			`SELECT id, bank_name, account_number, account_type, holder_name, is_active
+			 FROM bank_accounts
+			 WHERE id = $1 AND is_active = TRUE`,
+			[req.params.id]
+		);
+		const row = rows[0];
+		if (!row) {
+			throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'No se encontró la cuenta.');
+		}
+
+		let deactivated = false;
+		await client.query('SAVEPOINT remove_account');
+		try {
+			const deleted = await client.query('DELETE FROM bank_accounts WHERE id = $1', [row.id]);
+			if (deleted.rowCount !== 1) {
+				throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'No se encontró la cuenta.');
+			}
+			await client.query('RELEASE SAVEPOINT remove_account');
+		} catch (error) {
+			if (!isForeignKeyViolation(error)) throw error;
+			await client.query('ROLLBACK TO SAVEPOINT remove_account');
+			await client.query('UPDATE bank_accounts SET is_active = FALSE WHERE id = $1', [row.id]);
+			deactivated = true;
+		}
+
+		await writeAudit(client, {
+			userId: req.user.id,
+			action: 'DELETE',
+			tableAffected: 'bank_accounts',
+			recordId: row.id,
+			oldValues: present(row),
+			newValues: deactivated ? { ...present(row), isActive: false } : null,
+			...requestMeta(req)
+		});
+	});
+	res.json({ removed: true });
+}
+
+/** @param {unknown} error */
+function isForeignKeyViolation(error) {
+	return Boolean(error && typeof error === 'object' && 'code' in error && error.code === '23503');
 }
 
 export function assertKnownTaxType(taxType) {

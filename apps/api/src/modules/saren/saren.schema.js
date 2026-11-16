@@ -27,5 +27,6 @@ export const verifyStampSchema = z
 
 export const historyQuerySchema = z.object({
 	officeName: z.string().trim().min(1).max(255).optional(),
+	verifierId: z.uuid().optional(),
 	limit: z.coerce.number().int().min(1).max(500).optional()
 });

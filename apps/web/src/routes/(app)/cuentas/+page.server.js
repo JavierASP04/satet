@@ -38,7 +38,7 @@ export const load = async ({ fetch, cookies, parent }) => {
 };
 
 export const actions = {
-	default: async ({ request, fetch, cookies, locals }) => {
+	create: async ({ request, fetch, cookies, locals }) => {
 		if (!hasPermission(locals.user?.role, PERMISSIONS.CUENTAS_GESTIONAR)) {
 			return fail(403, { message: DENIED, tone: 'warn' });
 		}
@@ -103,5 +103,40 @@ export const actions = {
 			ok: true,
 			message: 'Cuenta institucional registrada. Ya puede usarse en los pagos de ese tributo.'
 		};
+	},
+
+	remove: async ({ request, fetch, cookies, locals }) => {
+		if (!hasPermission(locals.user?.role, PERMISSIONS.CUENTAS_GESTIONAR)) {
+			return fail(403, { message: DENIED, tone: 'warn' });
+		}
+
+		const data = await request.formData();
+		const id = String(data.get('id') ?? '').trim();
+		if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+			return fail(400, { message: 'La cuenta no es válida.' });
+		}
+
+		let response;
+		try {
+			response = await apiFetch(fetch, `/bank-accounts/${id}`, {
+				method: 'DELETE',
+				headers: sessionHeaders(cookies)
+			});
+		} catch {
+			return fail(503, { message: 'No se pudo contactar la API.' });
+		}
+
+		if (!response.ok) {
+			const apiMessage =
+				response.status >= 500
+					? 'No se pudo completar la operación. Revisa que la base de datos esté en marcha.'
+					: await readApiError(response, 'No se pudo eliminar la cuenta.');
+			return fail(response.status, {
+				tone: response.status === 404 ? 'warn' : 'danger',
+				message: apiMessage
+			});
+		}
+
+		return { ok: true, message: 'Cuenta institucional eliminada.' };
 	}
 };

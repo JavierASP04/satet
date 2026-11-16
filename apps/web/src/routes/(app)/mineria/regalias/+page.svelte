@@ -8,6 +8,7 @@
 	import Form from '#lib/components/Form.svelte';
 	import PaymentFields from '#lib/components/PaymentFields.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import { confirmSubmit } from '#lib/confirm-decision.js';
 	import SelectField from '#lib/components/SelectField.svelte';
 	import TextField from '#lib/components/TextField.svelte';
 	import { caracasDate, money, STATUS_LABELS } from '#lib/mining.js';
@@ -70,6 +71,7 @@
 			<section class="editor">
 				<Form
 					method="POST"
+					action="?/create"
 					enctype="multipart/form-data"
 					submit={() => {
 						submitting = true;
@@ -165,7 +167,7 @@
 								{#if royalty.status === 'VERIFICADO'}
 									<a href="/mineria/regalias/{royalty.id}/planilla">Planilla</a>
 								{:else if canResolve && royalty.status === 'PENDIENTE'}
-									<form method="POST" action="?/resolve" use:enhance>
+									<form method="POST" action="?/resolve" use:enhance use:confirmSubmit>
 										<input type="hidden" name="id" value={royalty.id} />
 										<input type="hidden" name="decision" value="APROBAR" />
 										<Button>Aprobar</Button>

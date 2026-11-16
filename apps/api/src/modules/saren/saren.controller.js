@@ -1,4 +1,11 @@
-import { ERROR_CODES, STAMP_STATUS, STAMP_VERIFICATION_CODES } from '@satet/shared';
+import {
+	ERROR_CODES,
+	PAYMENT_STATUS,
+	PAYMENT_SUBJECTS,
+	ROLES,
+	STAMP_STATUS,
+	STAMP_VERIFICATION_CODES
+} from '@satet/shared';
 import { getPool } from '../../db/pool.js';
 import { withTransaction } from '../../db/tx.js';
 import { writeAudit } from '../../lib/audit.js';
@@ -10,6 +17,10 @@ import { verifyStampQr } from '../stamps/stamps.qr.js';
 const NOT_FOUND_MESSAGE = 'El timbre fiscal no existe en los registros oficiales.';
 const ANNULLED_MESSAGE = 'Este timbre fiscal fue anulado previamente.';
 const CONSUMED_MESSAGE = 'Timbre fiscal VÁLIDO. Ha sido marcado como CONSUMIDO en este momento.';
+const UNPAID_MESSAGE =
+	'ALERTA DE PAGO: Este timbre no tiene un pago verificado. No se puede consumir hasta que tesorería confirme la transferencia.';
+const PENDING_PAYMENT_MESSAGE =
+	'ALERTA DE PAGO: El pago de este timbre sigue pendiente de verificación. No se puede consumir hasta que tesorería lo confirme.';
 
 const STAMP_ROW = `
 	s.id, s.uuid_code, s.amount_eur::text AS amount_eur,
@@ -140,6 +151,30 @@ async function annulled(client, req, stamp) {
 	};
 }
 
+/**
+ * @param {import('pg').PoolClient} client
+ * @param {import('express').Request} req
+ * @param {Record<string, any>} stamp
+ * @param {Record<string, unknown>} stored
+ * @param {'PENDIENTE' | null} paymentStatus
+ */
+async function unpaid(client, req, stamp, stored, paymentStatus) {
+	await audit(
+		client,
+		req,
+		stamp.id,
+		'REJECT',
+		{ status: STAMP_STATUS.ACTIVO, paymentStatus },
+		{ code: STAMP_VERIFICATION_CODES.UNPAID, attemptedOffice: req.body.officeName }
+	);
+	return {
+		success: false,
+		code: STAMP_VERIFICATION_CODES.UNPAID,
+		message: paymentStatus === PAYMENT_STATUS.PENDIENTE ? PENDING_PAYMENT_MESSAGE : UNPAID_MESSAGE,
+		data: presentStamp(stamp, stored)
+	};
+}
+
 /** POST /saren/verify-stamp */
 export async function verifyStamp(req, res) {
 	const body = req.body;
@@ -211,6 +246,20 @@ export async function verifyStamp(req, res) {
 			);
 		}
 
+		const payment = await client.query(
+			`SELECT status
+			 FROM payments
+			 WHERE related_kind = $1 AND related_id = $2::uuid AND status <> $3
+			 ORDER BY created_at DESC
+			 LIMIT 1
+			 FOR UPDATE`,
+			[PAYMENT_SUBJECTS.ELECTRONIC_STAMP, stamp.uuid_code, PAYMENT_STATUS.RECHAZADO]
+		);
+		const paymentStatus = payment.rows[0]?.status ?? null;
+		if (paymentStatus !== PAYMENT_STATUS.VERIFICADO) {
+			return unpaid(client, req, stamp, stored, paymentStatus);
+		}
+
 		const updated = await client.query(
 			`UPDATE electronic_stamps
 			 SET status = 'CONSUMIDO',
@@ -260,9 +309,24 @@ export async function verifyStamp(req, res) {
 	res.status(200).json(result);
 }
 
+/** GET /saren/verifiers */
+export async function verifiers(_req, res) {
+	const { rows } = await getPool().query(
+		`SELECT id, email
+		 FROM users
+		 WHERE role = $1
+		 ORDER BY email`,
+		[ROLES.VERIFICADOR_SAREN]
+	);
+	res.json({
+		verifiers: rows.map((row) => ({ id: row.id, email: row.email }))
+	});
+}
+
 /** GET /saren/history */
 export async function history(req, res) {
 	const officeName = req.query.officeName ?? null;
+	const verifierId = req.query.verifierId ?? null;
 	const limit = req.query.limit ?? 100;
 	const { rows } = await getPool().query(
 		`SELECT ${STAMP_ROW}, u.email AS consumed_by_email
@@ -270,9 +334,10 @@ export async function history(req, res) {
 		 LEFT JOIN users u ON u.id = s.consumed_by_saren_user
 		 WHERE s.status = 'CONSUMIDO'
 		   AND ($1::varchar IS NULL OR s.saren_office_name = $1)
+		   AND ($2::uuid IS NULL OR s.consumed_by_saren_user = $2)
 		 ORDER BY s.consumed_at DESC
-		 LIMIT $2`,
-		[officeName, limit]
+		 LIMIT $3`,
+		[officeName, verifierId, limit]
 	);
 
 	res.status(200).json({

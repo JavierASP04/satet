@@ -5,10 +5,28 @@ import { text } from '#lib/server/payment.js';
 import { sessionHeaders } from '#lib/server/session.js';
 
 const TAXES = new Set(Object.values(TAX_TYPES));
+const ORDERS = new Set([
+	'payment-desc',
+	'payment-asc',
+	'registered-desc',
+	'registered-asc',
+	'amount-desc',
+	'amount-asc'
+]);
+
+/** @param {URL} url */
+function filters(url) {
+	const taxType = url.searchParams.get('taxType') ?? '';
+	const requested = url.searchParams.get('order') ?? '';
+	return {
+		taxType: TAXES.has(taxType) ? taxType : '',
+		order: ORDERS.has(requested) ? requested : 'payment-desc'
+	};
+}
 
 export const load = async ({ fetch, cookies, url }) => {
-	const taxType = url.searchParams.get('taxType') ?? '';
-	const query = TAXES.has(taxType) ? `?taxType=${taxType}` : '';
+	const selected = filters(url);
+	const query = selected.taxType ? `?taxType=${selected.taxType}` : '';
 	try {
 		const response = await apiFetch(fetch, `/payments/pending${query}`, {
 			headers: sessionHeaders(cookies)
@@ -16,20 +34,20 @@ export const load = async ({ fetch, cookies, url }) => {
 		if (!response.ok) {
 			return {
 				payments: [],
-				taxType: TAXES.has(taxType) ? taxType : '',
+				...selected,
 				error: await readApiError(response, 'No se pudieron cargar los pagos pendientes.')
 			};
 		}
 		const body = await response.json();
 		return {
 			payments: body.payments ?? [],
-			taxType: TAXES.has(taxType) ? taxType : '',
+			...selected,
 			error: null
 		};
 	} catch {
 		return {
 			payments: [],
-			taxType: TAXES.has(taxType) ? taxType : '',
+			...selected,
 			error: 'No se pudo contactar la API.'
 		};
 	}

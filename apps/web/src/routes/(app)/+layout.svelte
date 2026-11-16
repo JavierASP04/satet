@@ -1,8 +1,9 @@
 <script>
 	import { page } from '$app/state';
-	import { APP_NAME, ROLE_LABELS } from '@satet/shared';
+	import { ROLE_LABELS } from '@satet/shared';
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
+	import ConfirmDecision from '#lib/components/ConfirmDecision.svelte';
 	import { visibleNavigation } from '#lib/navigation.js';
 
 	let { data, children } = $props();
@@ -64,12 +65,8 @@
 
 <div class="shell">
 	<aside>
-		<a class="brand" href="/panel">
-			<span class="mark">S</span>
-			<span>
-				<strong>{APP_NAME}</strong>
-				<small>Estado Trujillo</small>
-			</span>
+		<a class="brand" href="/panel" aria-label="SATET">
+			<img src="/satet-sidebar.png" alt="" />
 		</a>
 		<nav>
 			{#each groups as group (group.label)}
@@ -109,16 +106,19 @@
 
 	<div class="workspace">
 		<header class="topbar">
-			<div class="who">
-				<span class="avatar" aria-hidden="true">{data.user.email.slice(0, 1).toUpperCase()}</span>
-				<div>
-					<p>{data.user.email}</p>
-					<p>{ROLE_LABELS[data.user.role] ?? data.user.role}</p>
+			<img class="gov" src="/gobernacion-verde.png" alt="Gobierno Bolivariano de Trujillo" />
+			<div class="session">
+				<div class="who">
+					<span class="avatar" aria-hidden="true">{data.user.email.slice(0, 1).toUpperCase()}</span>
+					<div>
+						<p>{data.user.email}</p>
+						<p>{ROLE_LABELS[data.user.role] ?? data.user.role}</p>
+					</div>
 				</div>
+				<form method="POST" action="/salir">
+					<Button type="submit" variant="ghost">Cerrar sesión</Button>
+				</form>
 			</div>
-			<form method="POST" action="/salir">
-				<Button type="submit" variant="ghost">Cerrar sesión</Button>
-			</form>
 		</header>
 
 		{#if data.taxpayer && !data.taxpayer.isApproved}
@@ -135,6 +135,8 @@
 	</div>
 </div>
 
+<ConfirmDecision />
+
 <style>
 	.shell {
 		min-height: 100vh;
@@ -149,9 +151,9 @@
 		top: 0.85rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.2rem;
 		height: calc(100vh - 1.7rem);
-		padding: 1.1rem 0.75rem;
+		padding: 0.85rem 0.75rem 1.05rem;
 		overflow: auto;
 		border-radius: 1.7rem;
 		background: var(--wine-deep);
@@ -160,33 +162,23 @@
 	}
 
 	.brand {
-		display: flex;
-		align-items: center;
-		gap: 0.7rem;
-		padding: 0.15rem 0.4rem;
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.mark {
-		display: grid;
-		width: 2.35rem;
-		height: 2.35rem;
-		place-items: center;
-		border-radius: 999px;
-		background: #fff;
-		color: var(--wine-deep);
-		font-weight: 750;
-	}
-
-	.brand strong {
 		display: block;
-		letter-spacing: 0.14em;
-		font-size: 0.95rem;
+		flex: none;
+		margin: 0.15rem 0.2rem 0.15rem;
+		padding: 0.1rem 0.05rem 0.8rem;
+		border-bottom: 1px solid rgb(255 255 255 / 0.14);
+		background: transparent;
+		line-height: 0;
 	}
 
-	.brand small {
-		color: var(--sidebar-muted);
+	.brand img {
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+
+	nav {
+		padding: 0.35rem 0.1rem 0.15rem;
 	}
 
 	.group p,
@@ -275,14 +267,32 @@
 	.topbar {
 		display: flex;
 		align-items: center;
-		justify-content: flex-end;
-		gap: 0.8rem;
+		gap: 1rem;
 		margin-bottom: 1rem;
-		padding: 0.45rem 0.5rem 0.45rem 0.7rem;
+		padding: 0.55rem 0.55rem 0.55rem 1rem;
 		border: 1px solid var(--line);
-		border-radius: 999px;
+		border-radius: 1.35rem;
 		background: var(--surface);
 		box-shadow: 0 10px 28px rgb(15 46 34 / 0.05);
+	}
+
+	.gov {
+		display: block;
+		height: 2.7rem;
+		width: auto;
+		max-width: min(18rem, 42vw);
+		object-fit: contain;
+		object-position: left center;
+	}
+
+	.session {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		margin-left: auto;
+		padding: 0.2rem 0.2rem 0.2rem 0.55rem;
+		border-radius: 999px;
+		background: var(--canvas);
 	}
 
 	.who {
@@ -334,6 +344,11 @@
 			position: static;
 			height: auto;
 			margin-bottom: 0.8rem;
+		}
+
+		.brand img {
+			max-width: 18rem;
+			margin: 0 auto;
 		}
 
 		nav {

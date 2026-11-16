@@ -1,5 +1,5 @@
 <script>
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import Form from '#lib/components/Form.svelte';
@@ -7,6 +7,7 @@
 	import Screen from '#lib/components/Screen.svelte';
 	import TextField from '#lib/components/TextField.svelte';
 	import {
+		STATUS_LABELS,
 		formatCalendarDate,
 		formatVed,
 		taxFromExecuted,
@@ -59,13 +60,97 @@
 		rows.filter((row) => taxFromExecuted(row.executedAmountVed) != null).length
 	);
 	const canLoad = $derived(Boolean(data.taxpayer?.isApproved));
+	const receipt = $derived(form?.receipt ?? null);
+	const receiptAccount = $derived(
+		(data.accounts ?? []).find((item) => item.id === receipt?.bankAccountId) ?? null
+	);
 	const orderLabel = $derived(paymentOrderNumber.trim() || 'Sin número');
 	const entityLabel = $derived(entityName.trim() || 'Nueva orden');
+	/** @type {{ id: string, bankName: string, accountNumber: string, holderName?: string | null } | null} */
+	let account = $state(null);
+	let copied = $state(false);
+
+	/** @param {string | null | undefined} value */
+	function spaced(value) {
+		return String(value ?? '').replace(/(\d{4})(?=\d)/g, '$1 ');
+	}
+
+	/** @param {{ id: string, bankName: string, accountNumber: string, holderName?: string | null } | null} next */
+	function rememberAccount(next) {
+		if ((next?.id ?? null) === (account?.id ?? null)) return;
+		account = next;
+		copied = false;
+	}
+
+	/** @param {string} text */
+	async function writeClipboard(text) {
+		try {
+			window.focus();
+			await navigator.clipboard.writeText(text);
+			return true;
+		} catch {
+			const onCopy = (event) => {
+				event.preventDefault();
+				event.clipboardData?.setData('text/plain', text);
+			};
+			document.addEventListener('copy', onCopy);
+			const area = document.createElement('textarea');
+			area.value = text;
+			area.setAttribute('readonly', '');
+			area.style.position = 'fixed';
+			area.style.opacity = '0';
+			document.body.appendChild(area);
+			area.focus();
+			area.select();
+			let ok = false;
+			try {
+				ok = document.execCommand('copy');
+			} finally {
+				document.removeEventListener('copy', onCopy);
+				area.remove();
+			}
+			return ok;
+		}
+	}
+
+	/** @param {number | null} amount */
+	async function copyAccount(amount) {
+		if (!account) return;
+		const text = [
+			`Banco: ${account.bankName}`,
+			`Cuenta: ${account.accountNumber}`,
+			`Titular: ${account.holderName || 'Gobernación del Estado Trujillo'}`,
+			`Monto a pagar: ${amount != null ? formatVed(amount) : '—'}`
+		].join('\n');
+		copied = await writeClipboard(text);
+	}
 
 	/** @param {number} index @param {string} key @param {string} value */
 	function updateRow(index, key, value) {
 		rows[index] = { ...rows[index], [key]: value };
 	}
+
+	async function clearDraft() {
+		paymentOrderNumber = '';
+		entityName = '';
+		executedAmountVed = '';
+		executionDate = '';
+		rows = [blank({ executionDate: '' }), blank({ executionDate: '' })];
+		await tick();
+		executionDate = today;
+		rows = [blank(), blank()];
+	}
+
+	function trackSubmit() {
+		submitting = true;
+		return async ({ result, update }) => {
+			await update();
+			submitting = false;
+			if (result.type !== 'success') return;
+			await clearDraft();
+		};
+	}
+
 </script>
 
 <Screen
@@ -82,6 +167,76 @@
 			ha aprobado.
 		</Alert>
 	{:else}
+		{#snippet destination(amount)}
+			{#if account}
+				<div class="destination">
+					<p class="kicker">Cuenta institucional</p>
+					<p class="dest-bank">{account.bankName}</p>
+					<p class="dest-number">{spaced(account.accountNumber)}</p>
+					<p class="dest-holder">{account.holderName || 'Gobernación del Estado Trujillo'}</p>
+					<button type="button" class="copy" onclick={() => copyAccount(amount)}>
+						{copied ? 'Copiado' : 'Copiar datos'}
+					</button>
+				</div>
+			{/if}
+		{/snippet}
+		{#if receipt}
+			<section class="details">
+				<p class="kicker">Carga registrada</p>
+				<h2>
+					{receipt.orders.length === 1
+						? 'La orden quedó registrada.'
+						: `${receipt.orders.length} órdenes quedaron registradas.`}
+				</h2>
+				<p class="detail-status">{STATUS_LABELS[receipt.orders[0]?.status] ?? 'Pendiente'}</p>
+				<div class="detail-table">
+					<table>
+						<thead>
+							<tr>
+								<th>Orden</th>
+								<th>Ente o banco</th>
+								<th class="num">Ejecutado</th>
+								<th class="num">Impuesto</th>
+								<th class="num">Fecha</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each receipt.orders as order (order.id)}
+								<tr>
+									<td>{order.paymentOrderNumber}</td>
+									<td>{order.entityName}</td>
+									<td class="num">{formatVed(order.executedAmountVed)}</td>
+									<td class="num">{formatVed(order.taxAmountVed)}</td>
+									<td class="num">{formatCalendarDate(order.executionDate)}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+				<dl class="detail-meta">
+					<div>
+						<dt>Referencia</dt>
+						<dd>{receipt.bankReferenceNumber}</dd>
+					</div>
+					<div>
+						<dt>Cuenta</dt>
+						<dd>
+							{receiptAccount
+								? `${receiptAccount.bankName} · ${spaced(receiptAccount.accountNumber)}`
+								: '—'}
+						</dd>
+					</div>
+					<div>
+						<dt>Impuesto a pagar</dt>
+						<dd>{formatVed(receipt.totalTaxVed)}</dd>
+					</div>
+				</dl>
+				<div class="detail-actions">
+					<Button href="/uno-por-mil/cargar">Cargar otra</Button>
+					<Button href="/uno-por-mil" variant="ghost">Ver retenciones</Button>
+				</div>
+			</section>
+		{:else}
 		<div class="composer">
 			<div class="modes" role="tablist" aria-label="Tipo de carga">
 				<button
@@ -114,13 +269,7 @@
 							method="POST"
 							action="?/single"
 							enctype="multipart/form-data"
-							submit={() => {
-								submitting = true;
-								return async ({ update }) => {
-									await update();
-									submitting = false;
-								};
-							}}
+							submit={trackSubmit}
 						>
 							<fieldset>
 								<legend>Orden</legend>
@@ -173,6 +322,7 @@
 								accounts={data.accounts ?? []}
 								reference={form?.mode === 'single' ? (form?.values?.bankReferenceNumber ?? '') : ''}
 								accountId={form?.mode === 'single' ? (form?.values?.bankAccountId ?? '') : ''}
+								onAccount={rememberAccount}
 							/>
 							<div class="actions">
 								<Button disabled={submitting}
@@ -215,6 +365,7 @@
 								<p>Indica el monto ejecutado para ver la retención.</p>
 							{/if}
 						</div>
+						{@render destination(singleTax)}
 						<p class="note">
 							El servidor recalcula el impuesto al guardar. Hace falta el comprobante y la
 							referencia.
@@ -228,13 +379,7 @@
 							method="POST"
 							action="?/batch"
 							enctype="multipart/form-data"
-							submit={() => {
-								submitting = true;
-								return async ({ update }) => {
-									await update();
-									submitting = false;
-								};
-							}}
+							submit={trackSubmit}
 						>
 							<div class="lines">
 								{#each rows as row, index (index)}
@@ -310,6 +455,7 @@
 								accounts={data.accounts ?? []}
 								reference={form?.mode === 'batch' ? (form?.values?.bankReferenceNumber ?? '') : ''}
 								accountId={form?.mode === 'batch' ? (form?.values?.bankAccountId ?? '') : ''}
+								onAccount={rememberAccount}
 							/>
 							<div class="actions">
 								<Button disabled={submitting}
@@ -348,6 +494,7 @@
 									: `${batchCount} órdenes entran en la suma.`}
 							</p>
 						</div>
+						{@render destination(batchCount > 0 ? batchTax : null)}
 						<p class="note">
 							Cada fila se calcula por separado. El servidor recalcula al guardar. Un comprobante
 							cubre toda la carga.
@@ -356,6 +503,7 @@
 				</div>
 			{/if}
 		</div>
+		{/if}
 	{/if}
 </Screen>
 
@@ -542,6 +690,73 @@
 		margin-top: 1.15rem;
 	}
 
+	.details {
+		display: grid;
+		gap: 0.85rem;
+		padding: 1.25rem 1.3rem 1.2rem;
+		border: 1px solid var(--line);
+		border-radius: 1.35rem;
+		background: var(--surface);
+	}
+
+	.detail-status {
+		justify-self: start;
+		margin: 0;
+		padding: 0.28rem 0.7rem;
+		border-radius: 999px;
+		background: var(--warning-soft);
+		color: var(--warning);
+		font-size: 0.78rem;
+		font-weight: 700;
+	}
+
+	.detail-table {
+		overflow: auto;
+		border: 1px solid var(--line);
+		border-radius: 1rem;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.92rem;
+	}
+
+	th,
+	td {
+		padding: 0.7rem 0.85rem;
+		text-align: left;
+		border-bottom: 1px solid var(--line);
+	}
+
+	th {
+		color: var(--muted);
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	tbody tr:last-child td {
+		border-bottom: 0;
+	}
+
+	.num {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.detail-meta {
+		gap: 0.45rem;
+	}
+
+	.detail-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+	}
+
 	.slip {
 		position: sticky;
 		top: 1rem;
@@ -631,6 +846,46 @@
 		margin: 0;
 		color: var(--muted);
 		font-size: 0.88rem;
+	}
+
+	.destination {
+		display: grid;
+		gap: 0.2rem;
+		padding-top: 0.15rem;
+	}
+
+	.dest-bank,
+	.dest-number,
+	.dest-holder {
+		margin: 0;
+	}
+
+	.dest-bank {
+		font-weight: 700;
+	}
+
+	.dest-number {
+		font-family: var(--display);
+		font-size: 1.15rem;
+		letter-spacing: 0.04em;
+	}
+
+	.dest-holder {
+		color: var(--muted);
+		font-size: 0.88rem;
+	}
+
+	.copy {
+		justify-self: start;
+		margin-top: 0.45rem;
+		padding: 0.45rem 0.9rem;
+		border: 0;
+		border-radius: 999px;
+		background: var(--wine);
+		color: #fff;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
 	}
 
 	@media (max-width: 980px) {
