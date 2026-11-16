@@ -11,4 +11,5 @@ export const sarenRouter = Router();
 sarenRouter.use(authenticate, authorize(PERMISSIONS.TIMBRES_CONSUMIR));
 
 sarenRouter.post('/verify-stamp', validate(verifyStampSchema), controller.verifyStamp);
+sarenRouter.get('/verifiers', controller.verifiers);
 sarenRouter.get('/history', validate(historyQuerySchema, 'query'), controller.history);

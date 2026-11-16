@@ -66,6 +66,7 @@ function present(row) {
 		paymentDate: row.payment_date,
 		amountPaidVed: formatFixed(row.amount_paid_ved, 2),
 		voucherFileName: fileName,
+		voucherMediaType: row.voucher_media_type,
 		relatedKind: row.related_kind,
 		relatedId: row.related_id,
 		status: row.status,

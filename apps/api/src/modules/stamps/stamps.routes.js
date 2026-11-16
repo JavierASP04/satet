@@ -11,6 +11,7 @@ export const stampsRouter = Router();
 stampsRouter.use(authenticate);
 
 stampsRouter.get('/fees', authorize(PERMISSIONS.TIMBRES_COMPRAR), controller.listFees);
+stampsRouter.get('/issued', authorize(PERMISSIONS.TIMBRES_COMPRAR), controller.listIssued);
 stampsRouter.post(
 	'/purchase',
 	authorize(PERMISSIONS.TIMBRES_COMPRAR),

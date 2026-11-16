@@ -15,6 +15,6 @@ export default defineConfig({
 			env: { dir: '../..' }
 		})
 	],
-	server: { port: 5390, strictPort: true },
-	preview: { port: 5390, strictPort: true }
+	server: { host: '0.0.0.0', port: 5390, strictPort: true },
+	preview: { host: '0.0.0.0', port: 5390, strictPort: true }
 });

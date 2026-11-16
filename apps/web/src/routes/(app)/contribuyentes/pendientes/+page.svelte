@@ -5,6 +5,7 @@
 	import DataTable from '#lib/components/DataTable.svelte';
 	import Placeholder from '#lib/components/Placeholder.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import { confirmSubmit } from '#lib/confirm-decision.js';
 
 	let { data, form } = $props();
 
@@ -17,8 +18,8 @@
 
 <Screen
 	module="01"
-	title="Solicitudes pendientes"
-	description="Expedientes que el administrador todavía no decide."
+	title="Solicitudes de creación de expediente"
+	description="Peticiones de expediente que el administrador todavía no decide."
 	ready
 >
 	<div class="stack">
@@ -28,7 +29,7 @@
 		{#if data.error}
 			<Alert>{data.error}</Alert>
 		{:else if data.taxpayers.length === 0}
-			<Placeholder title="Bandeja vacía" text="No hay solicitudes pendientes." />
+			<Placeholder title="Bandeja vacía" text="No hay solicitudes de creación de expediente." />
 		{:else}
 			<section class="board">
 				<div class="figure">
@@ -65,20 +66,11 @@
 							<td>{when(taxpayer.createdAt)}</td>
 							<td>
 								<div class="actions">
-									<form method="POST" action="?/approve" use:enhance>
+									<form method="POST" action="?/approve" use:enhance use:confirmSubmit>
 										<input type="hidden" name="id" value={taxpayer.id} />
 										<Button>Aprobar</Button>
 									</form>
-									<form
-										method="POST"
-										action="?/reject"
-										use:enhance
-										onsubmit={(event) => {
-											if (!confirm('Se borrarán los datos de esta solicitud. ¿Continuar?')) {
-												event.preventDefault();
-											}
-										}}
-									>
+									<form method="POST" action="?/reject" use:enhance use:confirmSubmit>
 										<input type="hidden" name="id" value={taxpayer.id} />
 										<Button variant="ghost">Rechazar y eliminar</Button>
 									</form>

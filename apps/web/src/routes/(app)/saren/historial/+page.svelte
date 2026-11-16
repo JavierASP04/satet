@@ -14,17 +14,25 @@
 		{ value: '250', label: '250' },
 		{ value: '500', label: '500' }
 	];
+
+	const verifiers = $derived([
+		{ value: '', label: 'Todos los verificadores' },
+		...data.verifiers.map((verifier) => ({ value: verifier.id, label: verifier.email }))
+	]);
 </script>
 
 <Screen
 	module="06"
 	title="Historial de verificaciones"
-	description="Timbres consumidos, del más reciente al más antiguo. El filtro usa el nombre exacto de la oficina."
+	description="Timbres consumidos, del más reciente al más antiguo. Puedes filtrar por oficina o por el verificador que los consumió."
 	ready
 >
 	<div class="stack">
 		{#if data.error}
 			<Alert>{data.error}</Alert>
+		{/if}
+		{#if data.verifiersError}
+			<Alert>{data.verifiersError}</Alert>
 		{/if}
 
 		<section class="bar">
@@ -35,6 +43,12 @@
 					maxlength="255"
 					placeholder="Todas las oficinas"
 					value={data.officeName}
+				/>
+				<SelectField
+					label="Verificador"
+					name="verifierId"
+					options={verifiers}
+					value={data.verifierId}
 				/>
 				<SelectField label="Cantidad" name="limit" options={limits} value={String(data.limit || 100)} />
 				<Button>Filtrar</Button>
@@ -53,9 +67,11 @@
 				<p class="kicker">Historial</p>
 				<h2>Sin timbres consumidos</h2>
 				<p>
-					{data.officeName
-						? `No hay consumos con la oficina «${data.officeName}».`
-						: 'Cuando un verificador consuma un timbre, aparecerá aquí.'}
+					{data.verifierId
+						? 'Este verificador no tiene timbres consumidos con ese filtro.'
+						: data.officeName
+							? `No hay consumos con la oficina «${data.officeName}».`
+							: 'Cuando un verificador consuma un timbre, aparecerá aquí.'}
 				</p>
 				<Button href="/saren/verificar" variant="light">Verificar timbre</Button>
 			</section>

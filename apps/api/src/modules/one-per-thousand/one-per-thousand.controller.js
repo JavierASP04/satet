@@ -42,6 +42,28 @@ function calendarDate(iso) {
 	return iso;
 }
 
+/** @param {string | number | null | undefined} value */
+function ved(value) {
+	const amount = Number(value);
+	if (!Number.isFinite(amount)) return `${value ?? ''} VED`;
+	const [whole, fraction] = amount.toFixed(2).split('.');
+	const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+	return `${grouped},${fraction} VED`;
+}
+
+/** @param {string | null | undefined} iso */
+function calendar(iso) {
+	const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''));
+	return match ? `${match[3]}/${match[2]}/${match[1]}` : String(iso ?? '');
+}
+
+/** @param {string | null | undefined} account */
+function groupedAccount(account) {
+	const digits = String(account ?? '').replace(/\D/g, '');
+	if (digits.length !== 20) return String(account ?? '');
+	return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+}
+
 function todayInCaracas() {
 	return new Intl.DateTimeFormat('en-CA', {
 		timeZone: ZONE,
@@ -361,21 +383,24 @@ export async function downloadPdf(req, res) {
 			['Contribuyente', filing.company_name],
 			['RIF', filing.rif_number],
 			['Referencia bancaria', filing.bank_reference_number],
-			['Cuenta', `${filing.bank_name} ${filing.account_number}`],
+			['Cuenta', `${filing.bank_name} · ${groupedAccount(filing.account_number)}`],
 			['Estado', 'Aprobada']
 		],
 		lines: {
-			head: ['Orden', 'Ente', 'Ejecutado', 'Impuesto', 'Fecha'],
+			title: 'Órdenes de pago',
+			widths: [1.25, 2.15, 1.2, 1.15, 1],
+			align: ['left', 'left', 'right', 'right', 'right'],
+			head: ['Orden', 'Ente o banco', 'Ejecutado', 'Impuesto', 'Fecha'],
 			rows: orders.rows.map((order) => [
 				order.payment_order_number,
 				order.entity_name,
-				`${order.executed_amount_ved} VED`,
-				`${order.tax_amount_ved} VED`,
-				order.execution_date
+				ved(order.executed_amount_ved),
+				ved(order.tax_amount_ved),
+				calendar(order.execution_date)
 			])
 		},
 		totalLabel: 'Impuesto total',
-		total: `${filing.total_tax_ved} VED`
+		total: ved(filing.total_tax_ved)
 	});
-	sendPdf(res, pdf, `uno-por-mil-${filing.id}.pdf`);
+	sendPdf(res, pdf, `uno-por-mil-${filing.id}.pdf`, true);
 }

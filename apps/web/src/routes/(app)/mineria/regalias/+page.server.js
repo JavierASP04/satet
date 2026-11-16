@@ -34,7 +34,7 @@ export const load = async ({ fetch, cookies, parent, url }) => {
 };
 
 export const actions = {
-	default: async ({ request, fetch, cookies }) => {
+	create: async ({ request, fetch, cookies }) => {
 		const data = await request.formData();
 		const values = {
 			periodYear: text(data, 'periodYear'),

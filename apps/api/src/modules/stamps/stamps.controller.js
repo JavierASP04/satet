@@ -140,6 +140,40 @@ export async function purchase(req, res) {
 	res.status(201).json({ stamp: toStamp(rows[0]) });
 }
 
+/** GET /stamps/issued */
+export async function listIssued(req, res) {
+	if (req.user.role !== ROLES.ADMIN_SISTEMA) {
+		throw new HttpError(
+			403,
+			ERROR_CODES.FORBIDDEN,
+			'No tiene permiso para ver los timbres emitidos.'
+		);
+	}
+	const { rows } = await getPool().query(
+		`SELECT ${STAMP_COLUMNS}
+		 ${STAMP_FROM}
+		 ORDER BY s.created_at DESC
+		 LIMIT 500`
+	);
+	res.json({
+		stamps: rows.map((row) => {
+			const stamp = toStamp(row);
+			return {
+				uuid: stamp.uuid,
+				rif: stamp.rif,
+				taxpayer: stamp.taxpayer,
+				feeCode: stamp.feeCode ?? '',
+				concept: stamp.concept ?? '',
+				amountEur: stamp.amountEur,
+				bcvRate: stamp.bcvRate,
+				amountVed: stamp.amountVed,
+				issuedAt: stamp.issuedAt,
+				status: stamp.status
+			};
+		})
+	});
+}
+
 /** GET /stamps/:uuid/pdf */
 export async function downloadPdf(req, res) {
 	if (!z.uuid().safeParse(req.params.uuid).success) {
@@ -166,7 +200,7 @@ export async function downloadPdf(req, res) {
 	const pdf = await renderStampPdf(stamp);
 	res.status(200);
 	res.setHeader('Content-Type', 'application/pdf');
-	res.setHeader('Content-Disposition', `attachment; filename="timbre-${stamp.uuid}.pdf"`);
+	res.setHeader('Content-Disposition', `inline; filename="timbre-${stamp.uuid}.pdf"`);
 	res.setHeader('Content-Length', String(pdf.length));
 	res.send(pdf);
 }

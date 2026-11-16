@@ -31,37 +31,35 @@ export const actions = {
 			return fail(400, { message: 'Elige un concepto del tabulador.' });
 		}
 
-		let response;
 		try {
-			response = await apiFetch(fetch, '/stamps/purchase', {
+			const response = await apiFetch(fetch, '/stamps/purchase', {
 				method: 'POST',
 				headers: sessionHeaders(cookies),
 				body: JSON.stringify({ feeCode })
 			});
-		} catch {
-			return fail(503, { feeCode, message: 'No se pudo contactar la API.' });
-		}
+			if (!response.ok) {
+				const fallback = 'No se pudo emitir el timbre.';
+				return fail(response.status, {
+					feeCode,
+					message:
+						response.status >= 500
+							? 'No se pudo completar la operación. Revisa que la base de datos esté en marcha.'
+							: await readApiError(response, fallback)
+				});
+			}
 
-		if (!response.ok) {
-			const fallback = 'No se pudo emitir el timbre.';
-			return fail(response.status, {
+			const body = await response.json();
+			const stamp = body.stamp ?? null;
+			if (stamp) rememberIssuedStamp(cookies, url, stamp);
+			return {
+				ok: true,
 				feeCode,
-				message:
-					response.status >= 500
-						? 'No se pudo completar la operación. Revisa que la base de datos esté en marcha.'
-						: await readApiError(response, fallback)
-			});
+				message: 'Timbre emitido. Ya puedes descargar el PDF.',
+				stamp,
+				qrDataUrl: stamp ? await stampQrDataUrl(stamp.qrPayload) : null
+			};
+		} catch {
+			return fail(503, { feeCode, message: 'No se pudo contactar la API. Vuelve a intentar.' });
 		}
-
-		const body = await response.json();
-		const stamp = body.stamp ?? null;
-		if (stamp) rememberIssuedStamp(cookies, url, stamp);
-		return {
-			ok: true,
-			feeCode,
-			message: 'Timbre emitido. Ya puedes descargar el PDF.',
-			stamp,
-			qrDataUrl: stamp ? await stampQrDataUrl(stamp.qrPayload) : null
-		};
 	}
 };

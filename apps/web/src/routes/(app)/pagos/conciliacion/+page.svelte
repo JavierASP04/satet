@@ -4,6 +4,7 @@
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import { confirmSubmit } from '#lib/confirm-decision.js';
 	import SelectField from '#lib/components/SelectField.svelte';
 	import TextAreaField from '#lib/components/TextAreaField.svelte';
 	import { formatCalendarDate } from '#lib/one-per-thousand.js';
@@ -18,10 +19,49 @@
 		{ value: TAX_TYPES.TIMBRE_FISCAL, label: 'Timbre fiscal' }
 	];
 
+	const orders = [
+		{ value: 'payment-desc', label: 'Fecha de pago, más reciente' },
+		{ value: 'payment-asc', label: 'Fecha de pago, más antigua' },
+		{ value: 'registered-desc', label: 'Registro, más reciente' },
+		{ value: 'registered-asc', label: 'Registro, más antiguo' },
+		{ value: 'amount-desc', label: 'Monto, mayor primero' },
+		{ value: 'amount-asc', label: 'Monto, menor primero' }
+	];
+
 	let openId = $state('');
+	const payments = $derived(sortPayments(data.payments, data.order));
 	const countLabel = $derived(
-		data.payments.length === 1 ? '1 pago pendiente' : `${data.payments.length} pagos pendientes`
+		payments.length === 1 ? '1 pago pendiente' : `${payments.length} pagos pendientes`
 	);
+
+	/**
+	 * @param {Record<string, unknown>[]} rows
+	 * @param {string | undefined} order
+	 */
+	function sortPayments(rows, order) {
+		const key = order || 'payment-desc';
+		const direction = key.endsWith('asc') ? 1 : -1;
+		return [...rows].sort((left, right) => compare(left, right, key) * direction);
+	}
+
+	/**
+	 * @param {Record<string, unknown>} left
+	 * @param {Record<string, unknown>} right
+	 * @param {string} order
+	 */
+	function compare(left, right, order) {
+		if (order.startsWith('amount')) {
+			return Number(left.amountPaidVed) - Number(right.amountPaidVed);
+		}
+		const field = order.startsWith('registered') ? 'createdAt' : 'paymentDate';
+		return time(left[field]) - time(right[field]);
+	}
+
+	/** @param {unknown} value */
+	function time(value) {
+		const parsed = new Date(String(value ?? '')).getTime();
+		return Number.isNaN(parsed) ? 0 : parsed;
+	}
 </script>
 
 <Screen
@@ -31,6 +71,10 @@
 	ready
 >
 	<div class="stack">
+		<header class="print-band">
+			<img src="/satet-sidebar.png" alt="SATET" />
+			<img src="/gobernacion-blanco.png" alt="Gobernación del Estado Trujillo" />
+		</header>
 		{#if form?.message}
 			<Alert tone={form.ok ? 'ok' : form.tone === 'warn' ? 'warn' : 'danger'}>{form.message}</Alert>
 		{/if}
@@ -48,12 +92,13 @@
 		<section class="bar">
 			<form class="filter" method="GET">
 				<SelectField label="Tributo" name="taxType" options={taxes} value={data.taxType} />
+				<SelectField label="Orden" name="order" options={orders} value={data.order} />
 				<Button>Filtrar</Button>
 			</form>
 			<p class="count">{countLabel}</p>
 		</section>
 
-		{#if data.payments.length === 0}
+		{#if payments.length === 0}
 			<section class="empty">
 				<p class="kicker">Pendientes</p>
 				<h2>Sin pagos por conciliar</h2>
@@ -61,7 +106,7 @@
 			</section>
 		{:else}
 			<ul class="cards">
-				{#each data.payments as row (row.id)}
+				{#each payments as row (row.id)}
 					<li class="card">
 						<div class="top">
 							<div>
@@ -102,7 +147,7 @@
 						</dl>
 						<div class="actions">
 							<a class="tool" href="/pagos/{row.id}/comprobante">Comprobante</a>
-							<form method="POST" action="?/verify" use:enhance>
+							<form method="POST" action="?/verify" use:enhance use:confirmSubmit>
 								<input type="hidden" name="id" value={row.id} />
 								<Button>Verificar</Button>
 							</form>
@@ -116,7 +161,7 @@
 							</button>
 						</div>
 						{#if openId === row.id}
-							<form class="reason" method="POST" action="?/reject" use:enhance>
+							<form class="reason" method="POST" action="?/reject" use:enhance use:confirmSubmit>
 								<input type="hidden" name="id" value={row.id} />
 								<TextAreaField
 									label="Motivo del rechazo"
@@ -391,6 +436,52 @@
 
 	.notice p {
 		color: var(--ink);
+	}
+
+	.print-band {
+		display: none;
+	}
+
+	@media print {
+		:global(html),
+		:global(body),
+		.print-band,
+		.print-band img {
+			-webkit-print-color-adjust: exact;
+			print-color-adjust: exact;
+		}
+
+		:global(aside),
+		:global(.topbar),
+		:global(.head),
+		.bar,
+		.actions,
+		.reason,
+		.notice {
+			display: none !important;
+		}
+
+		.print-band {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 1rem;
+			padding: 0.8rem 1rem;
+			background: #0f2e22 !important;
+		}
+
+		.print-band img {
+			width: auto;
+			background: transparent;
+		}
+
+		.print-band img:first-child {
+			height: 3.2rem;
+		}
+
+		.print-band img:last-child {
+			height: 1.7rem;
+		}
 	}
 
 	@media (max-width: 980px) {

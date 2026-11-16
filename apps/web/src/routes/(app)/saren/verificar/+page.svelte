@@ -29,6 +29,7 @@
 		[STAMP_VERIFICATION_CODES.VALIDATED_AND_CONSUMED]: 'Consumido',
 		[STAMP_VERIFICATION_CODES.ALREADY_USED]: 'Ya usado',
 		[STAMP_VERIFICATION_CODES.ANNULLED]: 'Anulado',
+		[STAMP_VERIFICATION_CODES.UNPAID]: 'Sin pago',
 		[STAMP_VERIFICATION_CODES.NOT_FOUND]: 'No existe'
 	};
 
@@ -64,19 +65,41 @@
 		scanning = false;
 	}
 
+	async function openCamera() {
+		const attempts = [
+			{ video: { facingMode: { ideal: 'environment' } }, audio: false },
+			{ video: true, audio: false }
+		];
+		let lastError = /** @type {unknown} */ (null);
+		for (const constraints of attempts) {
+			try {
+				return await navigator.mediaDevices.getUserMedia(constraints);
+			} catch (error) {
+				lastError = error;
+			}
+		}
+		throw lastError;
+	}
+
 	async function startScan() {
 		scanError = '';
+		if (!window.isSecureContext) {
+			scanError =
+				'La cámara solo funciona con una conexión segura. Abre el sitio con https, acepta el aviso del certificado y vuelve a intentar.';
+			return;
+		}
 		if (!navigator.mediaDevices?.getUserMedia) {
 			scanError = 'Este navegador no puede usar la cámara. Escribe el serial.';
 			return;
 		}
 		try {
-			stream = await navigator.mediaDevices.getUserMedia({
-				video: { facingMode: { ideal: 'environment' } },
-				audio: false
-			});
-		} catch {
-			scanError = 'No se pudo abrir la cámara. Revisa el permiso del navegador.';
+			stream = await openCamera();
+		} catch (error) {
+			const name = error instanceof DOMException ? error.name : '';
+			scanError =
+				name === 'NotAllowedError'
+					? 'El teléfono bloqueó la cámara. Permite el acceso en el aviso del navegador y vuelve a intentar.'
+					: 'No se pudo abrir la cámara. Revisa el permiso del navegador.';
 			stopScan();
 			return;
 		}
@@ -133,7 +156,9 @@
 	ready
 >
 	<div class="stack">
-		{#if form?.message && !form?.code}
+		{#if form?.code === STAMP_VERIFICATION_CODES.UNPAID}
+			<Alert tone="warn">{form.message}</Alert>
+		{:else if form?.message && !form?.code}
 			<Alert tone="danger">{form.message}</Alert>
 		{/if}
 
@@ -232,7 +257,11 @@
 				<div>
 					<p>Emitido</p>
 					<strong>{formatRegisteredAt(form.stamp.issuedAt)}</strong>
-					<span>Consumido {formatRegisteredAt(form.stamp.consumedAt)}</span>
+					<span>
+						{form.stamp.consumedAt
+							? `Consumido ${formatRegisteredAt(form.stamp.consumedAt)}`
+							: 'Todavía no se consume'}
+					</span>
 				</div>
 				<div>
 					<p>Oficina</p>

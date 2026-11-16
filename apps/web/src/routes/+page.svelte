@@ -15,9 +15,8 @@
 <div class="home">
 	<header>
 		<div class="bar">
-			<a class="brand" href="/">
-				<span>S</span>
-				{APP_NAME}
+			<a class="brand" href="/" aria-label="Gobierno Bolivariano de Trujillo">
+				<img src="/gobernacion-blanco.png" alt="" />
 			</a>
 			<nav>
 				{#if data.user}
@@ -188,25 +187,18 @@
 	}
 
 	.brand {
-		display: flex;
-		align-items: center;
-		gap: 0.65rem;
-		color: inherit;
-		font-weight: 750;
-		letter-spacing: 0.16em;
+		display: block;
+		line-height: 0;
 		text-decoration: none;
 	}
 
-	.brand span {
-		display: grid;
-		width: 2rem;
-		height: 2rem;
-		place-items: center;
-		border-radius: 999px;
-		background: #fff;
-		color: var(--wine-deep);
-		font-size: 0.95rem;
-		letter-spacing: 0;
+	.brand img {
+		display: block;
+		height: 4.1rem;
+		width: auto;
+		max-width: min(18rem, 58vw);
+		object-fit: contain;
+		object-position: left center;
 	}
 
 	.bar nav {

@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import { apiFetch, readApiError } from '#lib/server/api.js';
 import { readVoucherField, text } from '#lib/server/payment.js';
 import { sessionHeaders } from '#lib/server/session.js';
@@ -13,6 +13,29 @@ export const load = async ({ fetch, cookies, parent }) => {
 	const body = await response.json();
 	return { accounts: body.accounts ?? [] };
 };
+
+/**
+ * @param {Record<string, any>} body
+ * @param {{ bankReferenceNumber: string, bankAccountId: string }} values
+ */
+function receiptFrom(body, values) {
+	const declarations = body.declaration ? [body.declaration] : (body.declarations ?? []);
+	return {
+		filingId: body.filingId,
+		totalTaxVed: Number(body.totalTaxVed),
+		bankReferenceNumber: values.bankReferenceNumber,
+		bankAccountId: values.bankAccountId,
+		orders: declarations.map((order) => ({
+			id: order.id,
+			paymentOrderNumber: order.paymentOrderNumber,
+			entityName: order.entityName,
+			executedAmountVed: Number(order.executedAmountVed),
+			taxAmountVed: Number(order.taxAmountVed),
+			executionDate: order.executionDate,
+			status: order.status
+		}))
+	};
+}
 
 /** @param {Response} response @param {string} fallback */
 async function failureMessage(response, fallback) {
@@ -65,7 +88,8 @@ export const actions = {
 			});
 		}
 
-		redirect(303, '/uno-por-mil');
+		const body = await response.json();
+		return { receipt: receiptFrom(body, values) };
 	},
 
 	batch: async ({ request, fetch, cookies }) => {
@@ -133,6 +157,7 @@ export const actions = {
 			});
 		}
 
-		redirect(303, '/uno-por-mil');
+		const body = await response.json();
+		return { receipt: receiptFrom(body, values) };
 	}
 };

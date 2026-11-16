@@ -6,5 +6,6 @@ export const GET = ({ fetch, cookies }) =>
 		cookies,
 		'/reports/export/pdf',
 		'informe-gestion.pdf',
-		'No se pudo descargar el informe.'
+		'No se pudo descargar el informe.',
+		{ inline: true }
 	);

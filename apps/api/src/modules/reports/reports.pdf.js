@@ -1,4 +1,19 @@
-import PDFDocument from 'pdfkit';
+import { renderPlanilla } from '../../lib/planilla.js';
+
+const MONTHS = [
+	'Enero',
+	'Febrero',
+	'Marzo',
+	'Abril',
+	'Mayo',
+	'Junio',
+	'Julio',
+	'Agosto',
+	'Septiembre',
+	'Octubre',
+	'Noviembre',
+	'Diciembre'
+];
 
 /**
  * Informe de gestión con las mismas cifras del resumen.
@@ -11,62 +26,50 @@ import PDFDocument from 'pdfkit';
  * }} summary
  */
 export function renderManagementPdf(summary) {
-	return new Promise((resolve, reject) => {
-		const doc = new PDFDocument({ size: 'A4', margin: 48, compress: false });
-		/** @type {Buffer[]} */
-		const chunks = [];
-		doc.on('data', (chunk) => chunks.push(chunk));
-		doc.on('end', () => resolve(Buffer.concat(chunks)));
-		doc.on('error', reject);
-
-		doc
-			.font('Helvetica-Bold')
-			.fontSize(11)
-			.fillColor('#1b4d3e')
-			.text('GOBERNACIÓN DEL ESTADO TRUJILLO');
-		doc.font('Helvetica').fontSize(10).fillColor('#333333').text('SATET');
-		doc.moveDown(0.4);
-		doc.font('Helvetica-Bold').fontSize(18).fillColor('#14281f').text('Informe de gestión');
-		doc.moveDown(0.3);
-		doc
-			.font('Helvetica')
-			.fontSize(11)
-			.fillColor('#333333')
-			.text(
-				'Recaudación de los pagos verificados, en bolívares. La especificación no define la meta proyectada. Este informe no la compara.'
-			);
-		doc.moveDown(0.8);
-		doc
-			.font('Helvetica-Bold')
-			.fontSize(12)
-			.fillColor('#14281f')
-			.text(`Total acumulado: ${summary.totalVed} ${summary.currency}`);
-		doc.moveDown(0.6);
-		doc.font('Helvetica-Bold').fontSize(11).fillColor('#1b4d3e').text('Por ramo');
-		doc.moveDown(0.2);
-		for (const branch of summary.byBranch) {
-			doc
-				.font('Helvetica')
-				.fontSize(11)
-				.fillColor('#14281f')
-				.text(`${branch.label}: ${branch.totalVed} ${summary.currency}`);
-		}
-		doc.moveDown(0.6);
-		doc.font('Helvetica-Bold').fontSize(11).fillColor('#1b4d3e').text('Por mes');
-		doc.moveDown(0.2);
-		if (summary.months.length === 0) {
-			doc.font('Helvetica').fontSize(11).fillColor('#14281f').text('Sin pagos verificados.');
-		}
-		for (const month of summary.months) {
-			const parts = month.byBranch
-				.map((branch) => `${branch.label} ${branch.totalVed}`)
-				.join(' · ');
-			doc
-				.font('Helvetica')
-				.fontSize(11)
-				.fillColor('#14281f')
-				.text(`${month.month}: ${month.totalVed} ${summary.currency} (${parts})`);
-		}
-		doc.end();
+	const money = (value) => ved(value, summary.currency);
+	return renderPlanilla({
+		title: 'Informe de gestión',
+		intro:
+			'Recaudación de los pagos verificados, en bolívares. La especificación no define la meta proyectada. Este informe no la compara.',
+		facts: [],
+		tables: [
+			{
+				title: 'Por ramo',
+				widths: [1.6, 1],
+				align: ['left', 'right'],
+				head: ['Ramo', 'Recaudado'],
+				rows: summary.byBranch.map((branch) => [branch.label, money(branch.totalVed)])
+			},
+			{
+				title: 'Por mes',
+				widths: [1.4, 1, 1, 1, 1.15],
+				align: ['left', 'right', 'right', 'right', 'right'],
+				head: ['Mes', ...summary.byBranch.map((branch) => branch.label), 'Total'],
+				rows: summary.months.map((month) => [
+					monthLabel(month.month),
+					...month.byBranch.map((branch) => money(branch.totalVed)),
+					money(month.totalVed)
+				]),
+				empty: 'Sin pagos verificados.'
+			}
+		],
+		totalLabel: 'Total acumulado',
+		total: money(summary.totalVed)
 	});
+}
+
+/** @param {string} value @param {string} currency */
+function ved(value, currency) {
+	const amount = Number(value);
+	if (!Number.isFinite(amount)) return `${value} ${currency}`;
+	const sign = amount < 0 ? '-' : '';
+	const [whole, fraction] = Math.abs(amount).toFixed(2).split('.');
+	return `${sign}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${fraction} ${currency}`;
+}
+
+/** @param {string} value */
+function monthLabel(value) {
+	const [year, month] = String(value).split('-').map(Number);
+	if (!year || !month) return value;
+	return `${MONTHS[month - 1] ?? value} ${year}`;
 }

@@ -29,6 +29,7 @@
 	let paymentDate = $state(untrack(() => form?.values?.paymentDate || today));
 	let voucherName = $state('');
 	let submitting = $state(false);
+	let copiedKey = $state('');
 
 	const obligationOptions = $derived([
 		{ value: '', label: 'Sin obligación asociada' },
@@ -54,6 +55,57 @@
 		const value = Number(raw);
 		return Number.isFinite(value) && value > 0 ? formatVedText(value) : '—';
 	});
+
+	const copyKey = $derived(`${destination?.id ?? ''}:${previewAmount}`);
+	const copied = $derived(Boolean(copiedKey) && copiedKey === copyKey);
+
+	/** @param {string | null | undefined} value */
+	function spaced(value) {
+		return String(value ?? '').replace(/(\d{4})(?=\d)/g, '$1 ');
+	}
+
+	/** @param {string} text */
+	async function writeClipboard(text) {
+		try {
+			window.focus();
+			await navigator.clipboard.writeText(text);
+			return true;
+		} catch {
+			const onCopy = (event) => {
+				event.preventDefault();
+				event.clipboardData?.setData('text/plain', text);
+			};
+			document.addEventListener('copy', onCopy);
+			const area = document.createElement('textarea');
+			area.value = text;
+			area.setAttribute('readonly', '');
+			area.style.position = 'fixed';
+			area.style.opacity = '0';
+			document.body.appendChild(area);
+			area.focus();
+			area.select();
+			let ok = false;
+			try {
+				ok = document.execCommand('copy');
+			} finally {
+				document.removeEventListener('copy', onCopy);
+				area.remove();
+			}
+			return ok;
+		}
+	}
+
+	async function copyDestination() {
+		if (!destination) return;
+		const payable = chosen ? Number(chosen.amount) : Number(String(amount).replace(',', '.'));
+		const text = [
+			`Banco: ${destination.bankName}`,
+			`Cuenta: ${destination.accountNumber}`,
+			`Titular: ${destination.holderName || 'Gobernación del Estado Trujillo'}`,
+			`Monto a pagar: ${Number.isFinite(payable) && payable > 0 ? formatVedText(payable) : '—'}`
+		].join('\n');
+		copiedKey = (await writeClipboard(text)) ? copyKey : '';
+	}
 
 	/** @param {Event & { currentTarget: HTMLSelectElement }} event */
 	function onObligation(event) {
@@ -241,12 +293,23 @@
 							<dd>
 								{#if destination}
 									{destination.bankName}
-									<span>{destination.accountNumber}</span>
+									<span>{spaced(destination.accountNumber)}</span>
+									<span>{destination.holderName || 'Gobernación del Estado Trujillo'}</span>
 								{:else}
 									Elige la cuenta del tributo.
 								{/if}
 							</dd>
 						</div>
+						{#if destination}
+							<div>
+								<dt>Datos para transferir</dt>
+								<dd>
+									<button type="button" class="copy" onclick={copyDestination}>
+										{copied ? 'Copiado' : 'Copiar datos'}
+									</button>
+								</dd>
+							</div>
+						{/if}
 						<div>
 							<dt>Obligación</dt>
 							<dd>{chosen ? chosen.label : 'Sin obligación asociada'}</dd>
@@ -430,6 +493,18 @@
 		margin-top: 0.1rem;
 		font-weight: 500;
 		color: var(--sidebar-muted);
+	}
+
+	.copy {
+		margin-top: 0.35rem;
+		padding: 0.45rem 0.9rem;
+		border: 0;
+		border-radius: 999px;
+		background: #fff;
+		color: var(--wine-deep);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
 	}
 
 	@media (max-width: 860px) {

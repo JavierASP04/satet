@@ -33,6 +33,11 @@ export function conflictFromDb(err) {
 			{ field: 'bankReferenceNumber' }
 		);
 	}
+	if (constraint === 'bank_accounts_account_number_key') {
+		return new HttpError(409, ERROR_CODES.CONFLICT, 'Ese número de cuenta ya está registrado.', {
+			field: 'accountNumber'
+		});
+	}
 	if (constraint === 'payments_one_open_subject') {
 		return new HttpError(
 			409,

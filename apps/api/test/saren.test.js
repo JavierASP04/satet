@@ -95,6 +95,7 @@ describe('consumo único del timbre en el SAREN', () => {
 				rif: 'J-12345678-9',
 				taxpayer: 'Cantera Andina C.A.'
 			});
+			await markPaid(client, taxpayerId, stamp.uuid);
 			const officialCookie = cookie(official);
 			const office = 'Registro Principal de Trujillo';
 
@@ -186,6 +187,7 @@ describe('consumo único del timbre en el SAREN', () => {
 				rif: 'J-11111111-1',
 				taxpayer: 'Manual C.A.'
 			});
+			await markPaid(client, taxpayerId, stamp.uuid);
 			const officialCookie = cookie(official);
 
 			const first = await post(officialCookie, {
@@ -290,6 +292,56 @@ describe('consumo único del timbre en el SAREN', () => {
 		}
 	});
 
+	it('avisa y no consume cuando el timbre no tiene un pago verificado', async () => {
+		const client = await getPool().connect();
+		try {
+			const owner = await insertUser(client, 'impago@saren.test', 'CONTRIBUYENTE');
+			const taxpayerId = await insertTaxpayer(client, owner, 'J-44444444-4', 'Impaga C.A.');
+			const official = await insertUser(client, 'impago-saren@saren.test', 'VERIFICADOR_SAREN');
+			const officialCookie = cookie(official);
+			const missing = await insertStamp(client, taxpayerId, {
+				rif: 'J-44444444-4',
+				taxpayer: 'Impaga C.A.'
+			});
+			const pending = await insertStamp(client, taxpayerId, {
+				rif: 'J-44444444-4',
+				taxpayer: 'Impaga C.A.'
+			});
+			await markPaid(client, taxpayerId, pending.uuid, 'PENDIENTE');
+
+			const none = await post(officialCookie, {
+				officeName: 'Registro Principal de Trujillo',
+				uuid: missing.uuid
+			});
+			assert.equal(none.status, 200);
+			const noneBody = await none.json();
+			assert.equal(noneBody.success, false);
+			assert.equal(noneBody.code, 'UNPAID');
+			assert.match(noneBody.message, /ALERTA DE PAGO/);
+			assert.equal(noneBody.data.status, 'ACTIVO');
+
+			const waiting = await post(officialCookie, {
+				officeName: 'Registro Principal de Trujillo',
+				uuid: pending.uuid
+			});
+			assert.equal(waiting.status, 200);
+			const waitingBody = await waiting.json();
+			assert.equal(waitingBody.code, 'UNPAID');
+			assert.match(waitingBody.message, /pendiente de verificación/);
+
+			const rows = await client.query(
+				`SELECT uuid_code, status, consumed_at FROM electronic_stamps WHERE uuid_code = ANY($1::varchar[])`,
+				[[missing.uuid, pending.uuid]]
+			);
+			for (const row of rows.rows) {
+				assert.equal(row.status, 'ACTIVO');
+				assert.equal(row.consumed_at, null);
+			}
+		} finally {
+			client.release();
+		}
+	});
+
 	it('deja un solo consumo cuando dos oficinas escanean el mismo timbre a la vez', async () => {
 		const client = await getPool().connect();
 		try {
@@ -301,6 +353,7 @@ describe('consumo único del timbre en el SAREN', () => {
 				rif: 'J-33333333-3',
 				taxpayer: 'Carrera C.A.'
 			});
+			await markPaid(client, taxpayerId, stamp.uuid);
 
 			const [left, right] = await Promise.all([
 				post(cookie(firstOfficial), { officeName: 'Oficina Uno', qrPayload: stamp.qr }),
@@ -379,4 +432,28 @@ async function insertStamp(client, taxpayerId, fields) {
 		[uuid, taxpayerId, qr, fields.status ?? 'ACTIVO', issuedAt]
 	);
 	return { uuid, qr };
+}
+
+let accountSeq = 0;
+
+async function markPaid(client, taxpayerId, stampUuid, status = 'VERIFICADO') {
+	accountSeq += 1;
+	const accountNumber = String(accountSeq).padStart(20, '0');
+	const { rows } = await client.query(
+		`INSERT INTO bank_accounts (bank_name, account_number, account_type)
+		 VALUES ('Banco de prueba', $1, 'TIMBRE_FISCAL')
+		 RETURNING id`,
+		[accountNumber]
+	);
+	await client.query(
+		`INSERT INTO payments (
+			taxpayer_id, tax_type, target_bank_account_id, bank_reference_number, origin_bank,
+			payment_date, amount_paid_ved, voucher_file_path, voucher_media_type, voucher_content,
+			related_kind, related_id, status
+		) VALUES (
+			$1, 'TIMBRE_FISCAL', $2, $3, 'Banco origen', CURRENT_DATE, 412.50,
+			'voucher.png', 'image/png', $4, 'ELECTRONIC_STAMP', $5, $6
+		)`,
+		[taxpayerId, rows[0].id, stampUuid.slice(0, 20), Buffer.from('png'), stampUuid, status]
+	);
 }

@@ -4,6 +4,7 @@
 	import Button from '#lib/components/Button.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import { confirmSubmit } from '#lib/confirm-decision.js';
 	import TextField from '#lib/components/TextField.svelte';
 	import { money, periodLabel } from '#lib/mining.js';
 
@@ -87,12 +88,12 @@
 								<td>{royalty.periodYear}</td>
 								<td>{money(royalty.amountVed)}</td>
 								<td>
-									<form method="POST" action="?/resolveRoyalty" use:enhance>
+									<form method="POST" action="?/resolveRoyalty" use:enhance use:confirmSubmit>
 										<input type="hidden" name="id" value={royalty.id} />
 										<input type="hidden" name="decision" value="APROBAR" />
 										<Button>Aprobar</Button>
 									</form>
-									<form class="reject" method="POST" action="?/resolveRoyalty" use:enhance>
+									<form class="reject" method="POST" action="?/resolveRoyalty" use:enhance use:confirmSubmit>
 										<input type="hidden" name="id" value={royalty.id} />
 										<input type="hidden" name="decision" value="RECHAZAR" />
 										<TextField label="Motivo" name="rejectionReason" required maxlength="500" />

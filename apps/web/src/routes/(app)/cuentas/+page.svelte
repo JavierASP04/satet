@@ -1,4 +1,5 @@
 <script>
+	import { enhance } from '$app/forms';
 	import { TAX_TYPES } from '@satet/shared';
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
@@ -21,6 +22,18 @@
 	let accountNumber = $state('');
 	let accountType = $state(TAX_TYPES.MINERO);
 	let submitting = $state(false);
+	let removing = $state('');
+	/** @type {{ id: string, bankName: string, accountNumber: string } | null} */
+	let pending = $state(null);
+
+	function askRemove(account) {
+		pending = account;
+	}
+
+	function cancelRemove() {
+		if (removing) return;
+		pending = null;
+	}
 
 	const groups = $derived(
 		order.map((type) => ({
@@ -59,7 +72,7 @@
 <Screen
 	module="07"
 	title="Cuentas institucionales"
-	description="Cuentas donde se transfiere minería, el 1 x 1000 y los timbres. El alta queda activa de inmediato."
+	description="Cuentas donde se transfiere minería, el 1 x 1000 y los timbres. El alta queda activa de inmediato y se puede eliminar."
 	ready
 >
 	<div class="stack">
@@ -97,6 +110,7 @@
 					</p>
 					<Form
 						method="POST"
+						action="?/create"
 						submit={() => {
 							submitting = true;
 							return async ({ update }) => {
@@ -168,6 +182,9 @@
 									<p class="bank">{account.bankName}</p>
 									<p class="number">{spaced(account.accountNumber)}</p>
 									<p class="holder">{account.holderName || 'Gobernación del Estado Trujillo'}</p>
+									<Button type="button" variant="ghost" onclick={() => askRemove(account)}>
+										Eliminar
+									</Button>
 								</li>
 							{/each}
 						</ul>
@@ -177,6 +194,46 @@
 		{/if}
 	</div>
 </Screen>
+
+{#if pending}
+	<div class="backdrop">
+		<button type="button" class="scrim" aria-label="Cancelar" onclick={cancelRemove}></button>
+		<div class="confirm" role="dialog" aria-modal="true" aria-labelledby="remove-title">
+			<p class="kicker">Confirmar</p>
+			<h2 id="remove-title">Eliminar esta cuenta</h2>
+			<p>
+				Se eliminará la cuenta de {pending.bankName}, {spaced(pending.accountNumber)}. Los pagos ya
+				registrados conservan el banco.
+			</p>
+			<form
+				method="POST"
+				action="?/remove"
+				use:enhance={() => {
+					removing = pending?.id ?? '';
+					return async ({ update }) => {
+						await update();
+						removing = '';
+						pending = null;
+					};
+				}}
+			>
+				<input type="hidden" name="id" value={pending.id} />
+				<div class="confirm-actions">
+					<Button type="button" variant="ghost" onclick={cancelRemove} disabled={Boolean(removing)}>
+						Cancelar
+					</Button>
+					<Button disabled={Boolean(removing)}>{removing ? 'Eliminando…' : 'Eliminar'}</Button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<svelte:window
+	onkeydown={(event) => {
+		if (pending && !removing && event.key === 'Escape') cancelRemove();
+	}}
+/>
 
 <style>
 	.stack {
@@ -351,6 +408,49 @@
 		font-family: var(--display);
 		font-size: 1.2rem;
 		letter-spacing: 0.04em;
+	}
+
+	.cards :global(button) {
+		margin-top: 0.55rem;
+	}
+
+	.backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 40;
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+	}
+
+	.scrim {
+		position: absolute;
+		inset: 0;
+		border: 0;
+		background: rgb(15 46 34 / 0.55);
+		cursor: pointer;
+	}
+
+	.confirm {
+		position: relative;
+		z-index: 1;
+		width: min(100%, 28rem);
+		padding: 1.25rem 1.3rem 1.3rem;
+		border-radius: 1.35rem;
+		background: var(--surface);
+		box-shadow: 0 24px 60px rgb(15 46 34 / 0.28);
+	}
+
+	.confirm p {
+		margin: 0.7rem 0 0;
+		color: var(--muted);
+	}
+
+	.confirm-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.55rem;
+		margin-top: 1.15rem;
 	}
 
 	@media (max-width: 980px) {
