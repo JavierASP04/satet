@@ -1,0 +1,9 @@
+{
+	"extends": "$app/tsconfig",
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": false,
+		"moduleResolution": "bundler"
+	},
+	"include": ["src", "vite.config.js"]
+}
