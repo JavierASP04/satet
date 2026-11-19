@@ -3,41 +3,6 @@ import { HttpError } from './http.js';
 
 const MAX_BYTES = 2_000_000;
 
-const CANONICAL_TYPES = new Map([
-	['image/jpeg', 'image/jpeg'],
-	['image/jpg', 'image/jpeg'],
-	['image/pjpeg', 'image/jpeg'],
-	['image/png', 'image/png'],
-	['image/x-png', 'image/png'],
-	['application/pdf', 'application/pdf']
-]);
-
-/**
- * `image/jpg` y `image/pjpeg` son el mismo JPEG. El resto de alias vuelve al tipo canónico.
- * @param {string} mediaType
- * @returns {'image/jpeg' | 'image/png' | 'application/pdf' | null}
- */
-export function normalizeVoucherMediaType(mediaType) {
-	const raw = String(mediaType ?? '')
-		.split(';')[0]
-		.trim()
-		.toLowerCase();
-	return CANONICAL_TYPES.get(raw) ?? null;
-}
-
-/**
- * @param {string} contentBase64
- */
-function decodeContent(contentBase64) {
-	let raw = String(contentBase64 ?? '').trim();
-	const marker = ';base64,';
-	if (raw.startsWith('data:')) {
-		const at = raw.indexOf(marker);
-		if (at !== -1) raw = raw.slice(at + marker.length);
-	}
-	return Buffer.from(raw, 'base64');
-}
-
 /**
  * @param {{ fileName: string, mediaType: string, contentBase64: string }} voucher
  */
@@ -51,7 +16,7 @@ export function readVoucher(voucher) {
 		);
 	}
 
-	const content = decodeContent(voucher.contentBase64);
+	const content = Buffer.from(voucher.contentBase64, 'base64');
 	if (content.length === 0 || content.length > MAX_BYTES) {
 		throw new HttpError(
 			400,
@@ -59,8 +24,7 @@ export function readVoucher(voucher) {
 			'El comprobante debe ser una imagen o un PDF de hasta 2 MB.'
 		);
 	}
-	const mediaType = normalizeVoucherMediaType(voucher.mediaType);
-	if (!mediaType || !matches(mediaType, content)) {
+	if (!matches(voucher.mediaType, content)) {
 		throw new HttpError(
 			400,
 			ERROR_CODES.VALIDATION_ERROR,
@@ -68,7 +32,7 @@ export function readVoucher(voucher) {
 		);
 	}
 
-	return { fileName, mediaType, content };
+	return { fileName, mediaType: voucher.mediaType, content };
 }
 
 /** @param {string} mediaType @param {Buffer} content */

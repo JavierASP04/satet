@@ -1,18 +1,10 @@
 import { ERROR_CODES } from '@satet/shared';
 import { z } from 'zod';
 import { HttpError } from './http.js';
-import { normalizeVoucherMediaType } from './voucher.js';
 
 export const voucherSchema = z.object({
 	fileName: z.string().trim().min(1, 'Indica el nombre del comprobante.').max(120),
-	mediaType: z
-		.string()
-		.trim()
-		.min(1, 'Indica el tipo del comprobante.')
-		.refine((value) => normalizeVoucherMediaType(value) !== null, {
-			message: 'El comprobante debe ser JPEG, PNG o PDF.'
-		})
-		.transform((value) => normalizeVoucherMediaType(value)),
+	mediaType: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
 	contentBase64: z.string().trim().min(1, 'Adjunta el comprobante de pago.')
 });
 
