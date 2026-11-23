@@ -12,6 +12,7 @@ export const taxpayersRouter = Router();
 taxpayersRouter.use(authenticate);
 
 taxpayersRouter.get('/profile', authorize(PERMISSIONS.PERFIL_GESTIONAR), controller.getProfile);
+taxpayersRouter.get('/alerts', authorize(PERMISSIONS.PERFIL_GESTIONAR), controller.listAlerts);
 taxpayersRouter.put(
 	'/profile',
 	authorize(PERMISSIONS.PERFIL_GESTIONAR),

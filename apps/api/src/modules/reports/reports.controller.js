@@ -1,4 +1,6 @@
+import { ERROR_CODES } from '@satet/shared';
 import { getPool } from '../../db/pool.js';
+import { HttpError } from '../../lib/http.js';
 import { buildXlsx } from '../../lib/xlsx.js';
 import { formatFixed } from '../../lib/present.js';
 import { sendPdf } from '../../lib/planilla.js';
@@ -13,33 +15,104 @@ const BRANCHES = [
 
 const VERIFIED = `status = 'VERIFICADO' AND verified_at IS NOT NULL`;
 
+const GRAINS = new Set(['day', 'week', 'fortnight', 'month', 'year']);
+
+/** @param {import('express').Request['query']} query */
+export function reportRange(query) {
+	const grain = query.grain ? String(query.grain) : null;
+	const from = query.from ? String(query.from) : null;
+	const to = query.to ? String(query.to) : null;
+	if (grain && !GRAINS.has(grain)) {
+		throw new HttpError(
+			400,
+			ERROR_CODES.VALIDATION_ERROR,
+			'El período debe ser día, semana, quincena, mes o año.'
+		);
+	}
+	if ((from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) || (to && !/^\d{4}-\d{2}-\d{2}$/.test(to))) {
+		throw new HttpError(400, ERROR_CODES.VALIDATION_ERROR, 'La fecha del reporte no es válida.');
+	}
+	return { grain, from, to };
+}
+
+/** @param {'day' | 'week' | 'fortnight' | 'month' | 'year' | null} grain */
+function bucketExpr(grain) {
+	if (grain === 'day') return `to_char(timezone('America/Caracas', verified_at), 'YYYY-MM-DD')`;
+	if (grain === 'week') return `to_char(timezone('America/Caracas', verified_at), 'IYYY-"W"IW')`;
+	if (grain === 'fortnight') {
+		return `to_char(timezone('America/Caracas', verified_at), 'YYYY-MM') || CASE WHEN EXTRACT(DAY FROM timezone('America/Caracas', verified_at)) <= 15 THEN '-1Q' ELSE '-2Q' END`;
+	}
+	if (grain === 'year') return `to_char(timezone('America/Caracas', verified_at), 'YYYY')`;
+	return `to_char(timezone('America/Caracas', verified_at), 'YYYY-MM')`;
+}
+
 /**
- * Recaudación ya registrada: pagos que tesorería dejó en VERIFICADO.
- * El mes es el calendario de America/Caracas de verified_at.
+ * @param {{ grain: string | null, from: string | null, to: string | null }} range
+ * @param {unknown[]} params
  */
-export async function loadRevenueSummary() {
+function rangeClause(range, params) {
+	const parts = [];
+	if (range.from) {
+		params.push(range.from);
+		parts.push(`(timezone('America/Caracas', verified_at))::date >= $${params.length}::date`);
+	}
+	if (range.to) {
+		params.push(range.to);
+		parts.push(`(timezone('America/Caracas', verified_at))::date <= $${params.length}::date`);
+	}
+	return parts.length ? ` AND ${parts.join(' AND ')}` : '';
+}
+
+/**
+ * Recaudación ya registrada: pagos verificados.
+ * El mes es el calendario de America/Caracas de verified_at.
+ * @param {{ grain?: string | null, from?: string | null, to?: string | null }} [range]
+ */
+export async function loadRevenueSummary(range = { grain: null, from: null, to: null }) {
 	const pool = getPool();
-	const [total, byType, byMonth] = await Promise.all([
+	const totalParams = [];
+	const typeParams = [];
+	const monthParams = [];
+	const bucketParams = [];
+	const totalWhere = rangeClause(range, totalParams);
+	const typeWhere = rangeClause(range, typeParams);
+	const monthWhere = rangeClause(range, monthParams);
+	const bucketWhere = rangeClause(range, bucketParams);
+	const [total, byType, byMonth, byBucket, stamps] = await Promise.all([
 		pool.query(
 			`SELECT COALESCE(SUM(amount_paid_ved), 0)::text AS total_ved
 			 FROM payments
-			 WHERE ${VERIFIED}`
+			 WHERE ${VERIFIED}${totalWhere}`,
+			totalParams
 		),
 		pool.query(
 			`SELECT tax_type, SUM(amount_paid_ved)::text AS total_ved
 			 FROM payments
-			 WHERE ${VERIFIED}
-			 GROUP BY tax_type`
+			 WHERE ${VERIFIED}${typeWhere}
+			 GROUP BY tax_type`,
+			typeParams
 		),
 		pool.query(
 			`SELECT to_char(timezone('America/Caracas', verified_at), 'YYYY-MM') AS month,
 			        tax_type,
 			        SUM(amount_paid_ved)::text AS total_ved
 			 FROM payments
-			 WHERE ${VERIFIED}
+			 WHERE ${VERIFIED}${monthWhere}
 			 GROUP BY 1, 2
-			 ORDER BY 1, 2`
-		)
+			 ORDER BY 1, 2`,
+			monthParams
+		),
+		pool.query(
+			`SELECT ${bucketExpr(range.grain)} AS bucket,
+			        tax_type,
+			        SUM(amount_paid_ved)::text AS total_ved
+			 FROM payments
+			 WHERE ${VERIFIED}${bucketWhere}
+			 GROUP BY 1, 2
+			 ORDER BY 1, 2`,
+			bucketParams
+		),
+		loadStampReport(range)
 	]);
 
 	const branches = branchTotals(byType.rows);
@@ -53,8 +126,13 @@ export async function loadRevenueSummary() {
 
 	return {
 		currency: 'VED',
+		grain: range.grain ?? 'month',
+		from: range.from,
+		to: range.to,
 		totalVed: money(total.rows[0].total_ved),
 		byBranch: branches,
+		stamps,
+		buckets: bucketList(byBucket.rows),
 		months: [...months.entries()].map(([month, amounts]) => {
 			const monthBranches = branchTotals(
 				[...amounts.entries()].map(([tax_type, total_ved]) => ({ tax_type, total_ved }))
@@ -69,12 +147,24 @@ export async function loadRevenueSummary() {
 }
 
 /** GET /reports/revenue-summary */
-export async function revenueSummary(_req, res) {
-	res.status(200).json(await loadRevenueSummary());
+export async function revenueSummary(req, res) {
+	res.status(200).json(await loadRevenueSummary(reportRange(req.query)));
 }
 
 /** GET /reports/export/excel */
-export async function exportExcel(_req, res) {
+export async function exportExcel(req, res) {
+	const range = reportRange(req.query);
+	const params = [];
+	const filters = [];
+	if (range.from) {
+		params.push(range.from);
+		filters.push(`p.payment_date >= $${params.length}::date`);
+	}
+	if (range.to) {
+		params.push(range.to);
+		filters.push(`p.payment_date <= $${params.length}::date`);
+	}
+	const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
 	const { rows } = await getPool().query(
 		`SELECT to_char(p.payment_date, 'YYYY-MM-DD') AS payment_date,
 		        t.rif_number, t.company_name, p.tax_type, p.bank_reference_number,
@@ -84,7 +174,9 @@ export async function exportExcel(_req, res) {
 		 FROM payments p
 		 JOIN taxpayers t ON t.id = p.taxpayer_id
 		 JOIN bank_accounts b ON b.id = p.target_bank_account_id
-		 ORDER BY p.payment_date, p.created_at`
+		 ${where}
+		 ORDER BY p.payment_date, p.created_at`,
+		params
 	);
 	const header = [
 		'Fecha de pago',
@@ -130,10 +222,79 @@ export async function exportExcel(_req, res) {
 }
 
 /** GET /reports/export/pdf */
-export async function exportPdf(_req, res) {
-	const summary = await loadRevenueSummary();
+export async function exportPdf(req, res) {
+	const summary = await loadRevenueSummary(reportRange(req.query));
 	const pdf = await renderManagementPdf(summary);
 	sendPdf(res, pdf, 'informe-gestion.pdf');
+}
+
+/**
+ * @param {{ grain: string | null, from: string | null, to: string | null }} range
+ */
+async function loadStampReport(range) {
+	const params = [];
+	const parts = [`status IN ('ACTIVO', 'CONSUMIDO')`];
+	if (range.from) {
+		params.push(range.from);
+		parts.push(`(timezone('America/Caracas', created_at))::date >= $${params.length}::date`);
+	}
+	if (range.to) {
+		params.push(range.to);
+		parts.push(`(timezone('America/Caracas', created_at))::date <= $${params.length}::date`);
+	}
+	const payParams = [];
+	const payParts = [`tax_type = 'TIMBRE_FISCAL'`, VERIFIED];
+	if (range.from) {
+		payParams.push(range.from);
+		payParts.push(
+			`(timezone('America/Caracas', verified_at))::date >= $${payParams.length}::date`
+		);
+	}
+	if (range.to) {
+		payParams.push(range.to);
+		payParts.push(`(timezone('America/Caracas', verified_at))::date <= $${payParams.length}::date`);
+	}
+	const [sold, collected] = await Promise.all([
+		getPool().query(
+			`SELECT COUNT(*)::int AS sold, COUNT(DISTINCT taxpayer_id)::int AS users
+			 FROM electronic_stamps
+			 WHERE ${parts.join(' AND ')}`,
+			params
+		),
+		getPool().query(
+			`SELECT COALESCE(SUM(amount_paid_ved), 0)::text AS total_ved
+			 FROM payments
+			 WHERE ${payParts.join(' AND ')}`,
+			payParams
+		)
+	]);
+	return {
+		usersServed: sold.rows[0].users,
+		stampsSold: sold.rows[0].sold,
+		amountCollectedVed: money(collected.rows[0].total_ved),
+		validityDays: null
+	};
+}
+
+/** @param {{ bucket: string, tax_type: string, total_ved: string }[]} rows */
+function bucketList(rows) {
+	/** @type {Map<string, Map<string, string>>} */
+	const groups = new Map();
+	for (const row of rows) {
+		const bucket = groups.get(row.bucket) ?? new Map();
+		bucket.set(row.tax_type, row.total_ved);
+		groups.set(row.bucket, bucket);
+	}
+	return [...groups.entries()].map(([label, amounts]) => {
+		const byBranch = branchTotals(
+			[...amounts.entries()].map(([tax_type, total_ved]) => ({ tax_type, total_ved }))
+		);
+		return {
+			label,
+			totalVed: sumMoney(byBranch.map((branch) => branch.totalVed)),
+			byBranch
+		};
+	});
 }
 
 /**

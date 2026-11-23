@@ -8,11 +8,11 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ENUMS DEFINITION
-CREATE TYPE user_role AS ENUM ('CONTRIBUYENTE', 'ANALISTA_RECAUDACION', 'ANALISTA_TESORERIA', 'VERIFICADOR_SAREN', 'ADMIN_SISTEMA');
+CREATE TYPE user_role AS ENUM ('CONTRIBUYENTE', 'PERSONA_NATURAL', 'ANALISTA_RECAUDACION', 'FISCALIZACION', 'ADMIN_SISTEMA');
 CREATE TYPE doc_type AS ENUM ('RIF_JURIDICO', 'RIF_NATURAL', 'CEDULA', 'PASAPORTE');
 CREATE TYPE tax_type AS ENUM ('MINERO', 'UN_POR_MIL', 'TIMBRE_FISCAL');
 CREATE TYPE payment_status AS ENUM ('PENDIENTE', 'VERIFICADO', 'RECHAZADO');
-CREATE TYPE stamp_status AS ENUM ('ACTIVO', 'CONSUMIDO', 'ANULADO');
+CREATE TYPE stamp_status AS ENUM ('SOLICITADO', 'ACTIVO', 'CONSUMIDO', 'ANULADO', 'RECHAZADO');
 CREATE TYPE mining_activity AS ENUM ('EXTRACCION', 'PROCESAMIENTO', 'SUBPRODUCTO', 'PREMEZCLADO');
 CREATE TYPE royalty_payment_form AS ENUM ('DINERO_TOTAL', 'DINERO_FRACCIONADO', 'ESPECIE');
 
@@ -140,7 +140,9 @@ CREATE TABLE mining_royalties (
     commercial_value_per_unit NUMERIC(12, 2) NOT NULL,
     applied_rate NUMERIC(5, 2) NOT NULL,
     amount_ved NUMERIC(15, 2) NOT NULL,
-    payment_form royalty_payment_form NOT NULL,
+    extracted_square_meters NUMERIC(14, 2),
+    payment_form royalty_payment_form,
+    payment_instructed_at TIMESTAMP WITH TIME ZONE,
     bank_reference_number VARCHAR(100),
     bank_account_id UUID REFERENCES bank_accounts(id),
     voucher_file_name VARCHAR(120),
@@ -384,7 +386,10 @@ CREATE TABLE electronic_stamps (
     amount_ved NUMERIC(15, 2) NOT NULL,
     qr_payload TEXT NOT NULL,
     fee_code VARCHAR(40) REFERENCES fiscal_stamp_fees(code),
-    status stamp_status DEFAULT 'ACTIVO',
+    status stamp_status DEFAULT 'SOLICITADO',
+    rejection_reason TEXT,
+    resolved_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMP WITH TIME ZONE,
     consumed_at TIMESTAMP WITH TIME ZONE,
     consumed_by_saren_user UUID REFERENCES users(id),
     saren_office_name VARCHAR(255),
@@ -413,7 +418,7 @@ CREATE TABLE payments (
     verified_by UUID REFERENCES users(id),
     verified_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT payments_account_reference_key UNIQUE (target_bank_account_id, bank_reference_number),
+    CONSTRAINT payments_reference_key UNIQUE (bank_reference_number),
     CONSTRAINT payments_related_pair CHECK (
         (related_kind IS NULL AND related_id IS NULL)
         OR (related_kind IS NOT NULL AND related_id IS NOT NULL)

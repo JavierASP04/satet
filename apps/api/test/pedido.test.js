@@ -206,13 +206,13 @@ describe('pedido de la reunión', () => {
 
 			const royalty = await post(ownerCookie, '/royalties', {
 				periodYear: 2024,
-				commercialValuePerUnit: 100,
-				paymentForm: 'ESPECIE'
+				extractedSquareMeters: 15
 			});
 			assert.equal(royalty.status, 201);
 			const royaltyBody = await royalty.json();
 			assert.equal(royaltyBody.royalty.volumeCubicMeters, '15.00');
-			assert.equal(royaltyBody.royalty.amountVed, '105.00');
+			assert.equal(royaltyBody.royalty.extractedSquareMeters, '15.00');
+			assert.equal(royaltyBody.royalty.amountVed, '98.00');
 
 			const pendingUser = await insertUser(client, 'nuevo@pedido.test', 'CONTRIBUYENTE');
 			await insertTaxpayer(client, pendingUser, 'J-87654321-0', false);

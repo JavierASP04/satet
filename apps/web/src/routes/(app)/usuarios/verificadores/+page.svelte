@@ -1,9 +1,11 @@
 <script>
+	import { ROLE_LABELS } from '@satet/shared';
 	import Alert from '#lib/components/Alert.svelte';
 	import Button from '#lib/components/Button.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import Form from '#lib/components/Form.svelte';
 	import Screen from '#lib/components/Screen.svelte';
+	import SelectField from '#lib/components/SelectField.svelte';
 	import TextField from '#lib/components/TextField.svelte';
 
 	let { data, form } = $props();
@@ -22,8 +24,8 @@
 
 <Screen
 	module="01"
-	title="Verificadores SAREN"
-	description="Cuentas de personal del SAREN. Entran con correo y contraseña, sin expediente de contribuyente."
+	title="Funcionarios"
+	description="Cuentas de Recaudación y Fiscalización. Entran con correo y contraseña, sin expediente."
 	ready
 >
 	<div class="stack">
@@ -36,7 +38,7 @@
 
 		<section class="editor">
 			<h2>Nueva cuenta</h2>
-			<p class="hint">El verificador verá Mi perfil, Verificar timbre e Historial.</p>
+			<p class="hint">Recaudación concilia pagos. Fiscalización revisa declaraciones y expedientes.</p>
 			<Form
 				method="POST"
 				submit={() => {
@@ -47,6 +49,16 @@
 					};
 				}}
 			>
+				<SelectField
+					label="Función"
+					name="role"
+					required
+					options={[
+						{ value: 'ANALISTA_RECAUDACION', label: 'Recaudación' },
+						{ value: 'FISCALIZACION', label: 'Fiscalización' }
+					]}
+					value={form?.role ?? 'ANALISTA_RECAUDACION'}
+				/>
 				<TextField
 					label="Correo"
 					name="email"
@@ -66,21 +78,22 @@
 					maxlength="72"
 				/>
 				<div class="actions">
-					<Button disabled={submitting}>{submitting ? 'Creando…' : 'Crear verificador'}</Button>
+					<Button disabled={submitting}>{submitting ? 'Creando…' : 'Crear funcionario'}</Button>
 				</div>
 			</Form>
 		</section>
 
 		{#if data.users.length === 0}
 			<section class="empty">
-				<h2>Sin verificadores</h2>
-				<p>Todavía no hay cuentas SAREN.</p>
+				<h2>Sin funcionarios</h2>
+				<p>Todavía no hay cuentas de Recaudación ni de Fiscalización.</p>
 			</section>
 		{:else}
 			<DataTable>
 				<thead>
 					<tr>
 						<th>Correo</th>
+						<th>Función</th>
 						<th>Estado</th>
 						<th>Alta</th>
 					</tr>
@@ -89,6 +102,7 @@
 					{#each data.users as user (user.id)}
 						<tr>
 							<td>{user.email}</td>
+							<td>{ROLE_LABELS[user.role] ?? user.role}</td>
 							<td>{user.isActive ? 'Activa' : 'Inactiva'}</td>
 							<td>{when(user.createdAt)}</td>
 						</tr>

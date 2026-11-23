@@ -58,8 +58,8 @@ describe('reportes del POA y auditoría', () => {
 		try {
 			contributor = await insertUser(client, 'mina@reportes.test', 'CONTRIBUYENTE');
 			collector = await insertUser(client, 'recaudacion@reportes.test', 'ANALISTA_RECAUDACION');
-			treasury = await insertUser(client, 'tesoreria@reportes.test', 'ANALISTA_TESORERIA');
-			saren = await insertUser(client, 'saren@reportes.test', 'VERIFICADOR_SAREN');
+			treasury = await insertUser(client, 'tesoreria@reportes.test', 'ANALISTA_RECAUDACION');
+			saren = await insertUser(client, 'persona@reportes.test', 'PERSONA_NATURAL');
 			admin = await insertUser(client, 'admin@reportes.test', 'ADMIN_SISTEMA');
 			const taxpayer = await insertTaxpayer(client, contributor);
 			await insertPayment(client, taxpayer, {

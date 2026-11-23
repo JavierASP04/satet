@@ -132,6 +132,16 @@
 					<div class="account">
 						<h1>Crea tu cuenta</h1>
 						<p class="lede">Dos pasos. Primero el acceso; después los datos fiscales.</p>
+						<SelectField
+							label="Tipo de cuenta"
+							name="accountKind"
+							required
+							options={[
+								{ value: 'CONTRIBUYENTE', label: 'Contribuyente' },
+								{ value: 'PERSONA_NATURAL', label: 'Persona natural' }
+							]}
+							value={values.accountKind ?? 'CONTRIBUYENTE'}
+						/>
 						<TextField
 							label="Correo"
 							name="email"

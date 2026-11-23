@@ -30,13 +30,12 @@
 	}
 
 	let periodYear = $state(untrack(() => field('periodYear', String(yearNow))));
-	let paymentForm = $state(untrack(() => field('paymentForm', 'DINERO_TOTAL')));
-	let commercialValuePerUnit = $state(untrack(() => field('commercialValuePerUnit', '')));
+	let extractedSquareMeters = $state(untrack(() => field('extractedSquareMeters', '')));
 	let submitting = $state(false);
 
 	const canDeclare = $derived(Boolean(data.taxpayer?.isApproved));
 	const canResolve = $derived(hasPermission(data.user?.role, PERMISSIONS.DECLARACIONES_RESOLVER));
-	const inKind = $derived(paymentForm === 'ESPECIE');
+	const isAdmin = $derived(data.user?.role === 'ADMIN_SISTEMA');
 	const yearTaken = $derived(
 		(data.royalties ?? []).some((royalty) => String(royalty.periodYear) === String(periodYear))
 	);
@@ -45,7 +44,7 @@
 <Screen
 	module="02"
 	title="Regalías mineras"
-	description="Siete por ciento del volumen declarado en el año, al valor comercial que indiques."
+	description="Primero solicitas la regalía con los metros cuadrados. El pago aparece cuando el administrador indica la forma."
 	ready
 >
 	<div class="stack">
@@ -80,7 +79,7 @@
 					}}
 				>
 					<fieldset>
-						<legend>Año y valor</legend>
+						<legend>Solicitud</legend>
 						<div class="pair">
 							<SelectField
 								label="Año"
@@ -91,52 +90,86 @@
 								onchange={(event) => (periodYear = event.currentTarget.value)}
 							/>
 							<TextField
-								label="Valor comercial final por m³ (VED)"
-								name="commercialValuePerUnit"
+								label="Metros cuadrados extraídos"
+								name="extractedSquareMeters"
 								type="number"
 								min="0.01"
 								step="0.01"
 								required
-								value={commercialValuePerUnit}
-								oninput={(event) => (commercialValuePerUnit = event.currentTarget.value)}
+								value={extractedSquareMeters}
+								oninput={(event) => (extractedSquareMeters = event.currentTarget.value)}
 							/>
 						</div>
-						<SelectField
-							label="Forma de pago"
-							name="paymentForm"
-							required
-							options={forms}
-							value={paymentForm}
-							onchange={(event) => (paymentForm = event.currentTarget.value)}
-						/>
 						{#if yearTaken}
 							<Alert tone="warn">
 								Ya hay una regalía declarada para {periodYear}. Una segunda del mismo año no se acepta.
 							</Alert>
 						{/if}
-					</fieldset>
-					{#if inKind}
 						<p class="note">
-							En especie no se pide comprobante ni cuenta. La declaración sigue siendo obligatoria.
+							El monto sale de los meses en los que ya declaraste extracción. El pago no se pide en este paso.
 						</p>
-					{:else}
-						{#if paymentForm === 'DINERO_FRACCIONADO'}
-							<p class="note">
-								El pago fraccionado se declara con un solo comprobante por el monto completo. No hay
-								un plan de cuotas.
-							</p>
-						{/if}
-						<PaymentFields
-							accounts={data.accounts ?? []}
-							reference={field('bankReferenceNumber', '')}
-							accountId={field('bankAccountId', '')}
-						/>
-					{/if}
+					</fieldset>
 					<div class="actions">
-						<Button disabled={submitting}>{submitting ? 'Guardando…' : 'Presentar regalía'}</Button>
+						<Button disabled={submitting}
+							>{submitting ? 'Guardando…' : 'Presentar solicitud de regalía'}</Button
+						>
 					</div>
 				</Form>
 			</section>
+		{/if}
+
+		{#each (data.royalties ?? []).filter((royalty) => royalty.paymentForm && royalty.paymentForm !== 'ESPECIE' && !royalty.bankReferenceNumber && royalty.status === 'PENDIENTE') as royalty (royalty.id)}
+			<section class="editor">
+				<h2>Pago de la regalía {royalty.periodYear}</h2>
+				<p class="note">
+					{formLabels[royalty.paymentForm] ?? royalty.paymentForm}. Monto {money(royalty.amountVed)}.
+				</p>
+				<Form method="POST" action="?/pay" enctype="multipart/form-data">
+					<input type="hidden" name="id" value={royalty.id} />
+					<PaymentFields accounts={data.accounts ?? []} />
+					<div class="actions">
+						<Button>Registrar pago</Button>
+					</div>
+				</Form>
+			</section>
+		{/each}
+
+		{#if isAdmin && data.pending?.length}
+			<h2>Solicitudes sin forma de pago</h2>
+			<DataTable>
+				<thead>
+					<tr>
+						<th>Año</th>
+						<th>Contribuyente</th>
+						<th>m²</th>
+						<th>Regalía</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each data.pending as royalty (royalty.id)}
+						<tr>
+							<td>{royalty.periodYear}</td>
+							<td>{royalty.companyName ?? '—'}</td>
+							<td>{royalty.extractedSquareMeters}</td>
+							<td>{money(royalty.amountVed)}</td>
+							<td>
+								{#if !royalty.paymentForm}
+									<form method="POST" action="?/instruct" use:enhance>
+										<input type="hidden" name="id" value={royalty.id} />
+										<select name="paymentForm" required>
+											{#each forms as option (option.value)}
+												<option value={option.value}>{option.label}</option>
+											{/each}
+										</select>
+										<Button>Indicar forma de pago</Button>
+									</form>
+								{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</DataTable>
 		{/if}
 
 		{#if data.royalties?.length}
@@ -164,11 +197,21 @@
 							<td>
 								{#if royalty.status === 'VERIFICADO'}
 									<a href="/mineria/regalias/{royalty.id}/planilla">Planilla</a>
-								{:else if canResolve && royalty.status === 'PENDIENTE'}
+								{:else if isAdmin && royalty.status === 'PENDIENTE' && !royalty.paymentForm}
+									<form method="POST" action="?/instruct" use:enhance>
+										<input type="hidden" name="id" value={royalty.id} />
+										<select name="paymentForm" required>
+											{#each forms as option (option.value)}
+												<option value={option.value}>{option.label}</option>
+											{/each}
+										</select>
+										<Button>Indicar forma de pago</Button>
+									</form>
+								{:else if canResolve && royalty.status === 'PENDIENTE' && royalty.paymentForm && (royalty.paymentForm === 'ESPECIE' || royalty.bankReferenceNumber)}
 									<form method="POST" action="?/resolve" use:enhance>
 										<input type="hidden" name="id" value={royalty.id} />
 										<input type="hidden" name="decision" value="APROBAR" />
-										<Button>Aprobar</Button>
+										<Button>Verificar</Button>
 									</form>
 								{/if}
 							</td>

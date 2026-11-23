@@ -40,7 +40,7 @@ export async function register(req, res) {
 			`INSERT INTO users (email, password_hash, role)
        VALUES ($1, $2, $3)
        RETURNING ${USER_COLUMNS}`,
-			[req.body.email, passwordHash, ROLES.CONTRIBUYENTE]
+			[req.body.email, passwordHash, req.body.accountKind]
 		);
 		const user = userResult.rows[0];
 		const taxpayerResult = await client.query(INSERT_TAXPAYER, taxpayerParams(user.id, req.body));

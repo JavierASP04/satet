@@ -2,7 +2,7 @@ export const MODULES = Object.freeze([
 	Object.freeze({
 		code: '01',
 		name: 'Contribuyentes y autenticación',
-		description: 'Autoregistro, expedientes, aprobación por Recaudación y RBAC.'
+		description: 'Autoregistro, expedientes y aprobación por Administrador o Fiscalización.'
 	}),
 	Object.freeze({
 		code: '02',
@@ -22,12 +22,12 @@ export const MODULES = Object.freeze([
 	Object.freeze({
 		code: '05',
 		name: 'Pagos y conciliación',
-		description: 'Registro de váuchers y validación por Tesorería.'
+		description: 'Registro de comprobantes y conciliación por Recaudación.'
 	}),
 	Object.freeze({
 		code: '06',
-		name: 'Verificación SAREN',
-		description: 'Validación y consumo único de timbres por funcionarios del SAREN.'
+		name: 'Consulta del timbre',
+		description: 'Cualquier lector abre los datos del timbre. No hay módulo SAREN.'
 	}),
 	Object.freeze({
 		code: '07',

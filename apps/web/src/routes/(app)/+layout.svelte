@@ -128,6 +128,11 @@
 				</Alert>
 			</div>
 		{/if}
+		{#each data.alerts ?? [] as alert (`${alert.kind}-${alert.message}`)}
+			<div class="banner">
+				<Alert tone={alert.kind === 'VENCIDO' ? 'danger' : 'warn'}>{alert.message}</Alert>
+			</div>
+		{/each}
 
 		<main>
 			{@render children()}

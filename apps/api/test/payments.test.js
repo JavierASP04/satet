@@ -60,8 +60,8 @@ describe('conciliación de tesorería', () => {
 		const client = await getPool().connect();
 		try {
 			const owner = await insertUser(client, 'mina@pagos.test', 'CONTRIBUYENTE');
-			const treasury = await insertUser(client, 'tesoreria@pagos.test', 'ANALISTA_TESORERIA');
-			const collector = await insertUser(client, 'recaudacion@pagos.test', 'ANALISTA_RECAUDACION');
+			const treasury = await insertUser(client, 'tesoreria@pagos.test', 'ANALISTA_RECAUDACION');
+			const collector = await insertUser(client, 'fiscal@pagos.test', 'FISCALIZACION');
 			const admin = await insertUser(client, 'admin@pagos.test', 'ADMIN_SISTEMA');
 			await insertTaxpayer(client, owner, 'J-12345678-9', true);
 			const pendingUser = await insertUser(client, 'nuevo@pagos.test', 'CONTRIBUYENTE');
@@ -232,6 +232,9 @@ describe('conciliación de tesorería', () => {
 				headers: { cookie: ownerCookie }
 			});
 			assert.equal(blocked.status, 409);
+			await client.query(`UPDATE mining_declarations SET status = 'VERIFICADO' WHERE id = $1`, [
+				secondId
+			]);
 			const mine = await fetch(`${base}/api/v1/payments/mine`, {
 				headers: { cookie: ownerCookie }
 			});

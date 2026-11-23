@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DOC_TYPES, RIF_REGEX } from '@satet/shared';
+import { DOC_TYPES, RIF_REGEX, ROLES } from '@satet/shared';
 
 const emailSchema = z.string().trim().toLowerCase().max(255).email('Correo inválido.');
 
@@ -42,7 +42,10 @@ export const taxpayerProfileSchema = z.object({
 
 export const registerSchema = taxpayerProfileSchema.extend({
 	email: emailSchema,
-	password: passwordSchema
+	password: passwordSchema,
+	accountKind: z
+		.enum([ROLES.CONTRIBUYENTE, ROLES.PERSONA_NATURAL])
+		.default(ROLES.CONTRIBUYENTE)
 });
 
 export const loginSchema = z.object({

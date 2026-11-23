@@ -183,3 +183,83 @@ export async function approve(req, res) {
 	}
 	res.json({ taxpayer: toTaxpayer(taxpayer) });
 }
+
+/** GET /taxpayers/alerts */
+export async function listAlerts(req, res) {
+	const { rows: taxpayers } = await getPool().query(
+		'SELECT id, is_approved FROM taxpayers WHERE user_id = $1',
+		[req.user.id]
+	);
+	const taxpayer = taxpayers[0];
+	if (!taxpayer) {
+		res.json({ alerts: [] });
+		return;
+	}
+	const [mining, filings, royalties, payments] = await Promise.all([
+		getPool().query(
+			`SELECT period_year, period_month, status, is_extemporaneous
+			 FROM mining_declarations
+			 WHERE taxpayer_id = $1 AND status <> 'VERIFICADO'
+			 ORDER BY period_year, period_month`,
+			[taxpayer.id]
+		),
+		getPool().query(
+			`SELECT id, status FROM one_per_thousand_filings
+			 WHERE taxpayer_id = $1 AND status = 'PENDIENTE'`,
+			[taxpayer.id]
+		),
+		getPool().query(
+			`SELECT period_year, status, payment_form
+			 FROM mining_royalties
+			 WHERE taxpayer_id = $1 AND status = 'PENDIENTE'
+			 ORDER BY period_year`,
+			[taxpayer.id]
+		),
+		getPool().query(
+			`SELECT id, tax_type FROM payments
+			 WHERE taxpayer_id = $1 AND status = 'PENDIENTE'`,
+			[taxpayer.id]
+		)
+	]);
+	/** @type {{ kind: string, message: string }[]} */
+	const alerts = [];
+	if (!taxpayer.is_approved) {
+		alerts.push({
+			kind: 'EXPEDIENTE',
+			message: 'Tu expediente está pendiente de aprobación. Los módulos de tributos siguen bloqueados.'
+		});
+	}
+	for (const row of mining.rows) {
+		const period = `${row.period_month}/${row.period_year}`;
+		alerts.push({
+			kind: row.is_extemporaneous ? 'VENCIDO' : 'PENDIENTE',
+			message:
+				row.status === 'RECHAZADO'
+					? `La declaración minera de ${period} fue rechazada y sigue sin pagar.`
+					: row.is_extemporaneous
+						? `La declaración minera de ${period} está fuera de tiempo y sin verificar.`
+						: `La declaración minera de ${period} está pendiente de verificación.`
+		});
+	}
+	if (filings.rows.length > 0) {
+		alerts.push({
+			kind: 'PENDIENTE',
+			message: `Tienes ${filings.rows.length} carga${filings.rows.length === 1 ? '' : 's'} de 1 por mil pendiente${filings.rows.length === 1 ? '' : 's'} de verificación.`
+		});
+	}
+	for (const row of royalties.rows) {
+		alerts.push({
+			kind: 'PENDIENTE',
+			message: row.payment_form
+				? `La regalía de ${row.period_year} espera el pago o su verificación.`
+				: `La regalía de ${row.period_year} espera que el administrador indique la forma de pago.`
+		});
+	}
+	if (payments.rows.length > 0) {
+		alerts.push({
+			kind: 'PENDIENTE',
+			message: `Tienes ${payments.rows.length} pago${payments.rows.length === 1 ? '' : 's'} pendiente${payments.rows.length === 1 ? '' : 's'} de conciliación.`
+		});
+	}
+	res.json({ alerts });
+}

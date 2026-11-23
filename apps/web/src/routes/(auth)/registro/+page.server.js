@@ -10,6 +10,7 @@ export const actions = {
 	default: async ({ request, fetch }) => {
 		const data = await request.formData();
 		const values = {
+			accountKind: text(data, 'accountKind') || 'CONTRIBUYENTE',
 			email: text(data, 'email'),
 			docType: text(data, 'docType'),
 			rifNumber: text(data, 'rifNumber'),
@@ -26,7 +27,7 @@ export const actions = {
 		try {
 			response = await apiFetch(fetch, '/auth/register', {
 				method: 'POST',
-				body: JSON.stringify({ ...values, password })
+				body: JSON.stringify({ ...values, password, accountKind: values.accountKind })
 			});
 		} catch {
 			return fail(503, { values, message: 'No se pudo contactar la API.' });

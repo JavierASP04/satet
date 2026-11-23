@@ -19,7 +19,7 @@ export const NAVIGATION = [
 				permission: P.CONTRIBUYENTES_APROBAR
 			},
 			{
-				label: 'Verificadores SAREN',
+				label: 'Funcionarios',
 				href: '/usuarios/verificadores',
 				permission: P.USUARIOS_CREAR
 			}
@@ -61,7 +61,12 @@ export const NAVIGATION = [
 		label: 'Timbres fiscales',
 		items: [
 			{ label: 'Mis timbres', href: '/timbres', permission: P.TIMBRES_COMPRAR },
-			{ label: 'Comprar timbre', href: '/timbres/comprar', permission: P.TIMBRES_COMPRAR }
+			{ label: 'Comprar timbre', href: '/timbres/comprar', permission: P.TIMBRES_COMPRAR },
+			{
+				label: 'Solicitudes',
+				href: '/timbres/solicitudes',
+				permission: P.TIMBRES_RESOLVER
+			}
 		]
 	},
 	{
@@ -71,14 +76,6 @@ export const NAVIGATION = [
 			{ label: 'Mis pagos', href: '/pagos/mios', permission: P.PAGOS_REGISTRAR },
 			{ label: 'Registrar pago', href: '/pagos/registrar', permission: P.PAGOS_REGISTRAR },
 			{ label: 'Conciliación', href: '/pagos/conciliacion', permission: P.PAGOS_CONCILIAR }
-		]
-	},
-	{
-		module: '06',
-		label: 'SAREN',
-		items: [
-			{ label: 'Verificar timbre', href: '/saren/verificar', permission: P.TIMBRES_CONSUMIR },
-			{ label: 'Historial', href: '/saren/historial', permission: P.TIMBRES_CONSUMIR }
 		]
 	},
 	{

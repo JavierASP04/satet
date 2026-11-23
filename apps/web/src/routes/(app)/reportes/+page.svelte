@@ -242,9 +242,37 @@
 						conciliarlo. Pendiente y rechazado no suman, aunque una planilla esté aprobada.
 					</p>
 					<p>No hay meta ni porcentaje de cumplimiento: la especificación no trae esa cifra.</p>
+					<form class="filters" method="GET">
+						<label>
+							Período
+							<select name="grain">
+								<option value="day">Día</option>
+								<option value="week">Semana</option>
+								<option value="fortnight">Quincena</option>
+								<option value="month" selected>Mes</option>
+								<option value="year">Año</option>
+							</select>
+						</label>
+						<label>
+							Desde
+							<input type="date" name="from" />
+						</label>
+						<label>
+							Hasta
+							<input type="date" name="to" />
+						</label>
+						<Button type="submit">Filtrar</Button>
+					</form>
+					{#if summary.stamps}
+						<p class="note">
+							Timbres vendidos: {summary.stamps.stampsSold}. Usuarios atendidos:
+							{summary.stamps.usersServed}. Recaudado:
+							{formatVedText(summary.stamps.amountCollectedVed)}. La vigencia en días no está definida.
+						</p>
+					{/if}
 					<div class="actions">
-						<Button href="/reportes/excel">Exportar Excel</Button>
-						<Button href="/reportes/pdf" variant="ghost">Exportar PDF</Button>
+						<Button href={`/reportes/excel${data.query ?? ''}`}>Exportar Excel</Button>
+						<Button href={`/reportes/pdf${data.query ?? ''}`} variant="ghost">Exportar PDF</Button>
 					</div>
 					<p class="note">
 						El Excel lista todos los pagos, con su estado. El PDF repite este resumen.
@@ -538,10 +566,26 @@
 		font-size: 0.95rem;
 	}
 
-	.actions {
+	.actions,
+	.filters {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.55rem;
+		align-items: end;
+	}
+
+	.filters label {
+		display: grid;
+		gap: 0.25rem;
+		font-size: 0.82rem;
+	}
+
+	.filters select,
+	.filters input {
+		padding: 0.45rem 0.6rem;
+		border: 1px solid var(--line);
+		border-radius: 0.7rem;
+		background: #fff;
 	}
 
 	.branches {

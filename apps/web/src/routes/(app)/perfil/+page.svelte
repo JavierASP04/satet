@@ -25,10 +25,11 @@
 	);
 
 	const roleSummaries = {
-		ADMIN_SISTEMA: 'Administra el sistema y puede usar todos los módulos.',
-		ANALISTA_RECAUDACION: 'Supervisa declaraciones y consulta el tablero.',
-		ANALISTA_TESORERIA: 'Concilia pagos y consulta el tablero de recaudación.',
-		VERIFICADOR_SAREN: 'Verifica y consume timbres fiscales.'
+		ADMIN_SISTEMA: 'Administra el sistema, aprueba expedientes y define la forma de pago de la regalía.',
+		ANALISTA_RECAUDACION: 'Concilia pagos, administra las cuentas institucionales y resuelve timbres.',
+		FISCALIZACION: 'Revisa declaraciones y aprueba o rechaza expedientes y tributos.',
+		CONTRIBUYENTE: 'Declara minería y 1 por mil, y solicita timbres, cuando el expediente está aprobado.',
+		PERSONA_NATURAL: 'Solicita timbres fiscales cuando el expediente está aprobado.'
 	};
 
 	const account = $derived([

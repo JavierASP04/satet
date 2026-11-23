@@ -8,7 +8,7 @@ export const ERROR_CODES = Object.freeze({
 	INTERNAL_ERROR: 'INTERNAL_ERROR'
 });
 
-/** Códigos de resultado de `POST /api/v1/saren/verify-stamp` (Módulo 06). */
+/** Códigos que usaba el módulo SAREN, ya retirado. La consulta pública no los devuelve. */
 export const STAMP_VERIFICATION_CODES = Object.freeze({
 	NOT_FOUND: 'NOT_FOUND',
 	ALREADY_USED: 'ALREADY_USED',

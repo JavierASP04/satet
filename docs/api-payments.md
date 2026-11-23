@@ -2,13 +2,13 @@
 
 Contrato del módulo 05. La sesión es la cookie de [`api-auth.md`](api-auth.md). El inicio de sesión no exige aprobación. Registrar un pago sí: hace falta un expediente aprobado.
 
-Tesorería (`ANALISTA_TESORERIA`) y el administrador tienen `pagos:conciliar`. El contribuyente y el administrador tienen `pagos:registrar`. Recaudación no registra ni concilia.
+Recaudación (`ANALISTA_RECAUDACION`) y el administrador tienen `pagos:conciliar`. El contribuyente, la persona natural y el administrador tienen `pagos:registrar`.
 
 El pago nace `PENDIENTE`. Verificar lo deja `VERIFICADO`. Rechazar lo deja `RECHAZADO` y guarda el motivo. No vuelve atrás.
 
 Si el pago señala una obligación que todavía está `PENDIENTE`, verificarla la aprueba y rechazarla la deja `RECHAZADO` (la planilla no se imprime). Si esa obligación ya estaba `VERIFICADO`, el rechazo del pago responde `409` y no la revierte: el administrador pudo haberla aprobado antes. Un timbre `ACTIVO` asociado a un pago rechazado pasa a `ANULADO`. Un timbre ya `CONSUMIDO` no se anula por este rechazo.
 
-El timbre sigue emitiéndose al comprarlo. Este módulo no cambia esa emisión; solo la revoca cuando el pago asociado se rechaza y el timbre no se ha consumido.
+La compra deja el timbre en `SOLICITADO`. El PDF se entrega cuando Recaudación o el administrador lo aprueban y el pago ya está `VERIFICADO`. Rechazar ese pago, si el timbre sigue `ACTIVO`, lo pasa a `ANULADO`.
 
 Los errores usan el sobre `error.code` y `error.message`. Los montos salen como texto con dos decimales.
 

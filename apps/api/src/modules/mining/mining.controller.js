@@ -8,6 +8,7 @@ import {
 } from '@satet/shared';
 import { getPool } from '../../db/pool.js';
 import { writeAudit } from '../../lib/audit.js';
+import { assertBankReferenceAvailable } from '../../lib/bank-reference.js';
 import { HttpError } from '../../lib/http.js';
 import { requireBankAccount } from '../../lib/payment-fields.js';
 import { renderPlanilla, sendPdf } from '../../lib/planilla.js';
@@ -131,6 +132,56 @@ async function approvedTaxpayer(req) {
 	return taxpayer;
 }
 
+/**
+ * El primer período no exige historial. A partir de ahí, un mes posterior
+ * espera que los anteriores estén declarados y verificados.
+ * @param {import('pg').PoolClient} client
+ * @param {string} taxpayerId
+ * @param {number} year
+ * @param {number} month
+ */
+async function assertNoEarlierDebt(client, taxpayerId, year, month) {
+	const { rows } = await client.query(
+		`SELECT period_year, period_month, status
+		 FROM mining_declarations
+		 WHERE taxpayer_id = $1
+		 ORDER BY period_year, period_month`,
+		[taxpayerId]
+	);
+	if (rows.length === 0) return;
+	const open = rows.find(
+		(row) =>
+			(row.period_year < year || (row.period_year === year && row.period_month < month)) &&
+			row.status !== 'VERIFICADO'
+	);
+	if (open) {
+		throw new HttpError(
+			409,
+			ERROR_CODES.CONFLICT,
+			'No puedes declarar un período posterior: hay un período anterior sin pagar.'
+		);
+	}
+	const have = new Set(rows.map((row) => `${row.period_year}-${row.period_month}`));
+	let cursorYear = rows[0].period_year;
+	let cursorMonth = rows[0].period_month;
+	const endYear = month === 1 ? year - 1 : year;
+	const endMonth = month === 1 ? 12 : month - 1;
+	while (cursorYear < endYear || (cursorYear === endYear && cursorMonth <= endMonth)) {
+		if (!have.has(`${cursorYear}-${cursorMonth}`)) {
+			throw new HttpError(
+				409,
+				ERROR_CODES.CONFLICT,
+				'No puedes declarar un período posterior: hay períodos anteriores sin declarar.'
+			);
+		}
+		cursorMonth += 1;
+		if (cursorMonth === 13) {
+			cursorMonth = 1;
+			cursorYear += 1;
+		}
+	}
+}
+
 /** POST /mining/declarations */
 export async function createDeclaration(req, res) {
 	const body = req.body;
@@ -142,6 +193,8 @@ export async function createDeclaration(req, res) {
 	const client = await getPool().connect();
 	try {
 		await client.query('BEGIN');
+		await assertNoEarlierDebt(client, taxpayer.id, body.periodYear, body.periodMonth);
+		await assertBankReferenceAvailable(client, body.bankReferenceNumber);
 		const account = await requireBankAccount(client, body.bankAccountId, TAX_TYPES.MINERO);
 		const priced = await client.query(
 			`SELECT activity, material, volume, price, rate,

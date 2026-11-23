@@ -11,6 +11,7 @@ import {
 } from '@satet/shared';
 import { getPool } from '../../db/pool.js';
 import { writeAudit } from '../../lib/audit.js';
+import { assertBankReferenceAvailable } from '../../lib/bank-reference.js';
 import { HttpError } from '../../lib/http.js';
 import { requireBankAccount } from '../../lib/payment-fields.js';
 import { formatFixed } from '../../lib/present.js';
@@ -232,8 +233,11 @@ async function lockSubject(client, taxpayerId, kind, relatedId, amount, taxType)
 		if (!row.amount_ok) {
 			throw new HttpError(400, ERROR_CODES.VALIDATION_ERROR, 'El monto no coincide con el timbre.');
 		}
-		if (row.status === STAMP_STATUS.ANULADO) {
-			throw new HttpError(409, ERROR_CODES.CONFLICT, 'El timbre ya está anulado.');
+		if (row.status === STAMP_STATUS.ANULADO || row.status === STAMP_STATUS.RECHAZADO) {
+			throw new HttpError(409, ERROR_CODES.CONFLICT, 'El timbre ya no admite un pago.');
+		}
+		if (row.status !== STAMP_STATUS.SOLICITADO && row.status !== STAMP_STATUS.ACTIVO) {
+			throw new HttpError(409, ERROR_CODES.CONFLICT, 'El timbre no está pendiente de pago.');
 		}
 		return row;
 	}
@@ -336,6 +340,7 @@ export async function upload(req, res) {
 	const client = await getPool().connect();
 	try {
 		await client.query('BEGIN');
+		await assertBankReferenceAvailable(client, body.bankReferenceNumber);
 		const account = await requireBankAccount(client, body.bankAccountId, body.taxType);
 		if (body.relatedKind) {
 			const subject = await lockSubject(

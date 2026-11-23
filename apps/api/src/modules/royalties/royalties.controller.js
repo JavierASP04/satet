@@ -2,6 +2,7 @@ import {
 	ERROR_CODES,
 	PAYMENT_STATUS,
 	PERMISSIONS,
+	ROLES,
 	ROYALTY_PAYMENT_FORMS,
 	ROYALTY_TAX_RATE,
 	TAX_TYPES,
@@ -9,6 +10,7 @@ import {
 } from '@satet/shared';
 import { getPool } from '../../db/pool.js';
 import { writeAudit } from '../../lib/audit.js';
+import { assertBankReferenceAvailable } from '../../lib/bank-reference.js';
 import { conflictFromDb } from '../../lib/db-errors.js';
 import { HttpError } from '../../lib/http.js';
 import { requireBankAccount } from '../../lib/payment-fields.js';
@@ -19,10 +21,11 @@ import { readVoucher } from '../../lib/voucher.js';
 const COLUMNS = `
 	r.id, r.taxpayer_id, r.period_year,
 	r.volume_cubic_meters::text AS volume_cubic_meters,
+	r.extracted_square_meters::text AS extracted_square_meters,
 	r.commercial_value_per_unit::text AS commercial_value_per_unit,
 	r.applied_rate::text AS applied_rate,
 	r.amount_ved::text AS amount_ved,
-	r.payment_form, r.bank_reference_number, r.status, r.rejection_reason, r.created_at
+	r.payment_form, r.payment_instructed_at, r.bank_reference_number, r.status, r.rejection_reason, r.created_at
 `;
 
 /** @param {Record<string, any>} row @param {boolean} [includeTaxpayer] */
@@ -32,10 +35,15 @@ function present(row, includeTaxpayer = false) {
 		taxpayerId: row.taxpayer_id,
 		periodYear: row.period_year,
 		volumeCubicMeters: row.volume_cubic_meters,
+		extractedSquareMeters: row.extracted_square_meters,
 		commercialValuePerUnit: row.commercial_value_per_unit,
 		appliedRate: row.applied_rate,
 		amountVed: row.amount_ved,
 		paymentForm: row.payment_form,
+		paymentInstructedAt:
+			row.payment_instructed_at instanceof Date
+				? row.payment_instructed_at.toISOString()
+				: (row.payment_instructed_at ?? null),
 		bankReferenceNumber: row.bank_reference_number,
 		status: row.status,
 		rejectionReason: row.rejection_reason,
@@ -71,8 +79,6 @@ async function approvedTaxpayer(req) {
 /** POST /royalties */
 export async function createRoyalty(req, res) {
 	const body = req.body;
-	const inKind = body.paymentForm === ROYALTY_PAYMENT_FORMS.ESPECIE;
-	const voucher = inKind ? null : readVoucher(body.voucher);
 	const taxpayer = await approvedTaxpayer(req);
 	const today = new Date();
 	const yearNow = Number(
@@ -85,46 +91,53 @@ export async function createRoyalty(req, res) {
 	const client = await getPool().connect();
 	try {
 		await client.query('BEGIN');
-		const volume = await client.query(
-			`SELECT COALESCE(SUM(l.volume_cubic_meters), 0)::text AS volume
-			 FROM mining_declaration_lines l
-			 JOIN mining_declarations d ON d.id = l.declaration_id
-			 WHERE d.taxpayer_id = $1 AND d.period_year = $2 AND d.status <> 'RECHAZADO'`,
+		const prior = await client.query(
+			`SELECT 1 FROM mining_royalties
+			 WHERE taxpayer_id = $1 AND period_year < $2 AND status <> 'VERIFICADO'`,
 			[taxpayer.id, body.periodYear]
 		);
-		if (Number(volume.rows[0].volume) <= 0) {
+		if (prior.rows[0]) {
+			throw new HttpError(
+				409,
+				ERROR_CODES.CONFLICT,
+				'No puedes solicitar un año posterior: hay una regalía anterior sin pagar.'
+			);
+		}
+		const volume = await client.query(
+			`SELECT COALESCE(SUM(l.volume_cubic_meters), 0)::text AS volume,
+			        (SUM(l.volume_cubic_meters * l.commercial_value_per_unit)
+			          / NULLIF(SUM(l.volume_cubic_meters), 0))::text AS price
+			 FROM mining_declaration_lines l
+			 JOIN mining_declarations d ON d.id = l.declaration_id
+			 WHERE d.taxpayer_id = $1
+			   AND d.period_year = $2
+			   AND d.status <> 'RECHAZADO'
+			   AND l.volume_cubic_meters > 0`,
+			[taxpayer.id, body.periodYear]
+		);
+		if (Number(volume.rows[0].volume) <= 0 || !volume.rows[0].price) {
 			throw new HttpError(
 				400,
 				ERROR_CODES.VALIDATION_ERROR,
-				'No hay producción minera declarada en ese año.'
+				'No hay meses con extracción declarada en ese año.'
 			);
 		}
-		const account = inKind
-			? null
-			: await requireBankAccount(client, body.bankAccountId, TAX_TYPES.MINERO);
 		const inserted = await client.query(
 			`INSERT INTO mining_royalties (
-				taxpayer_id, period_year, volume_cubic_meters, commercial_value_per_unit,
-				applied_rate, amount_ved, payment_form, bank_reference_number, bank_account_id,
-				voucher_file_name, voucher_media_type, voucher_content
+				taxpayer_id, period_year, volume_cubic_meters, extracted_square_meters,
+				commercial_value_per_unit, applied_rate, amount_ved
 			) VALUES (
-				$1, $2, $3, $4, $5,
-				ROUND($3::numeric * $4::numeric * $5::numeric / 100, 2),
-				$6, $7, $8, $9, $10, $11
+				$1, $2, $3, $4, $5, $6,
+				ROUND($4::numeric * $5::numeric * $6::numeric / 100, 2)
 			)
 			RETURNING id`,
 			[
 				taxpayer.id,
 				body.periodYear,
 				volume.rows[0].volume,
-				body.commercialValuePerUnit,
-				ROYALTY_TAX_RATE,
-				body.paymentForm,
-				inKind ? null : body.bankReferenceNumber,
-				account?.id ?? null,
-				voucher?.fileName ?? null,
-				voucher?.mediaType ?? null,
-				voucher?.content ?? null
+				body.extractedSquareMeters,
+				volume.rows[0].price,
+				ROYALTY_TAX_RATE
 			]
 		);
 		const loaded = await client.query(
@@ -192,6 +205,127 @@ export async function listPending(_req, res) {
 	res.json({ royalties: rows.map((row) => present(row, true)) });
 }
 
+/** POST /royalties/:id/instruct */
+export async function instructPayment(req, res) {
+	if (req.user.role !== ROLES.ADMIN_SISTEMA) {
+		throw new HttpError(
+			403,
+			ERROR_CODES.FORBIDDEN,
+			'Solo el administrador indica la forma de pago.'
+		);
+	}
+	const client = await getPool().connect();
+	try {
+		await client.query('BEGIN');
+		const current = await client.query(
+			`SELECT ${COLUMNS} FROM mining_royalties r WHERE r.id = $1 FOR UPDATE`,
+			[req.params.id]
+		);
+		const row = current.rows[0];
+		if (!row) throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'No se encontró la regalía.');
+		if (row.status !== PAYMENT_STATUS.PENDIENTE) {
+			throw new HttpError(409, ERROR_CODES.CONFLICT, 'Esta regalía ya fue resuelta.');
+		}
+		if (row.payment_form) {
+			throw new HttpError(409, ERROR_CODES.CONFLICT, 'La forma de pago ya fue indicada.');
+		}
+		await client.query(
+			`UPDATE mining_royalties
+			 SET payment_form = $2, payment_instructed_at = CURRENT_TIMESTAMP
+			 WHERE id = $1`,
+			[row.id, req.body.paymentForm]
+		);
+		await writeAudit(client, {
+			userId: req.user.id,
+			action: 'UPDATE',
+			tableAffected: 'mining_royalties',
+			recordId: row.id,
+			oldValues: { payment_form: null },
+			newValues: { payment_form: req.body.paymentForm },
+			...requestMeta(req)
+		});
+		await client.query('COMMIT');
+		const loaded = await getPool().query(`SELECT ${COLUMNS} FROM mining_royalties r WHERE r.id = $1`, [
+			row.id
+		]);
+		res.json({ royalty: present(loaded.rows[0]) });
+	} catch (err) {
+		await client.query('ROLLBACK');
+		throw err;
+	} finally {
+		client.release();
+	}
+}
+
+/** POST /royalties/:id/pay */
+export async function registerPayment(req, res) {
+	const taxpayer = await approvedTaxpayer(req);
+	const voucher = readVoucher(req.body.voucher);
+	const client = await getPool().connect();
+	try {
+		await client.query('BEGIN');
+		const current = await client.query(
+			`SELECT ${COLUMNS} FROM mining_royalties r
+			 WHERE r.id = $1 AND r.taxpayer_id = $2
+			 FOR UPDATE`,
+			[req.params.id, taxpayer.id]
+		);
+		const row = current.rows[0];
+		if (!row) throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'No se encontró la regalía.');
+		if (!row.payment_form) {
+			throw new HttpError(
+				409,
+				ERROR_CODES.CONFLICT,
+				'El administrador todavía no indicó la forma de pago.'
+			);
+		}
+		if (row.payment_form === ROYALTY_PAYMENT_FORMS.ESPECIE) {
+			throw new HttpError(400, ERROR_CODES.VALIDATION_ERROR, 'La regalía en especie no lleva comprobante.');
+		}
+		if (row.status !== PAYMENT_STATUS.PENDIENTE) {
+			throw new HttpError(409, ERROR_CODES.CONFLICT, 'Esta regalía ya fue resuelta.');
+		}
+		if (row.bank_reference_number) {
+			throw new HttpError(409, ERROR_CODES.CONFLICT, 'El pago de esta regalía ya fue registrado.');
+		}
+		await assertBankReferenceAvailable(client, req.body.bankReferenceNumber);
+		const account = await requireBankAccount(client, req.body.bankAccountId, TAX_TYPES.MINERO);
+		await client.query(
+			`UPDATE mining_royalties
+			 SET bank_reference_number = $2, bank_account_id = $3,
+			     voucher_file_name = $4, voucher_media_type = $5, voucher_content = $6
+			 WHERE id = $1`,
+			[
+				row.id,
+				req.body.bankReferenceNumber,
+				account.id,
+				voucher.fileName,
+				voucher.mediaType,
+				voucher.content
+			]
+		);
+		await writeAudit(client, {
+			userId: req.user.id,
+			action: 'UPDATE',
+			tableAffected: 'mining_royalties',
+			recordId: row.id,
+			oldValues: { bank_reference_number: null },
+			newValues: { bank_reference_number: req.body.bankReferenceNumber },
+			...requestMeta(req)
+		});
+		await client.query('COMMIT');
+		const loaded = await getPool().query(`SELECT ${COLUMNS} FROM mining_royalties r WHERE r.id = $1`, [
+			row.id
+		]);
+		res.json({ royalty: present(loaded.rows[0]) });
+	} catch (err) {
+		await client.query('ROLLBACK');
+		throw err;
+	} finally {
+		client.release();
+	}
+}
+
 /** POST /royalties/:id/resolve */
 export async function resolveRoyalty(req, res) {
 	const client = await getPool().connect();
@@ -207,6 +341,24 @@ export async function resolveRoyalty(req, res) {
 			throw new HttpError(409, ERROR_CODES.CONFLICT, 'Esta regalía ya fue resuelta.');
 		}
 		const approved = req.body.decision === 'APROBAR';
+		if (approved && !row.payment_form) {
+			throw new HttpError(
+				409,
+				ERROR_CODES.CONFLICT,
+				'Primero hay que indicar la forma de pago.'
+			);
+		}
+		if (
+			approved &&
+			row.payment_form !== ROYALTY_PAYMENT_FORMS.ESPECIE &&
+			!row.bank_reference_number
+		) {
+			throw new HttpError(
+				409,
+				ERROR_CODES.CONFLICT,
+				'La planilla espera a que el contribuyente registre el pago y se verifique.'
+			);
+		}
 		const updated = await client.query(
 			`UPDATE mining_royalties
 			 SET status = $2, rejection_reason = $3, resolved_by = $4, resolved_at = CURRENT_TIMESTAMP
@@ -263,7 +415,7 @@ export async function downloadPdf(req, res) {
 		throw new HttpError(
 			409,
 			ERROR_CODES.CONFLICT,
-			'La planilla se imprime cuando el administrador aprueba la regalía.'
+			'La planilla se imprime cuando el pago fue registrado y verificado.'
 		);
 	}
 	const royalty = present(row, true);

@@ -98,7 +98,7 @@ describe('emisión de timbres', () => {
 		try {
 			const owner = await insertUser(client, 'dueno@timbres.test', 'CONTRIBUYENTE');
 			const other = await insertUser(client, 'otro@timbres.test', 'CONTRIBUYENTE');
-			const saren = await insertUser(client, 'saren@timbres.test', 'VERIFICADOR_SAREN');
+			const saren = await insertUser(client, 'saren@timbres.test', 'FISCALIZACION');
 			const admin = await insertUser(client, 'admin@timbres.test', 'ADMIN_SISTEMA');
 			const ownerCookie = cookie(owner);
 			const otherCookie = cookie(other);
@@ -182,7 +182,7 @@ describe('emisión de timbres', () => {
 			assert.equal(body.stamp.amountEur, '1.20');
 			assert.equal(body.stamp.bcvRate, '41.2500');
 			assert.equal(body.stamp.amountVed, '49.50');
-			assert.equal(body.stamp.status, 'ACTIVO');
+			assert.equal(body.stamp.status, 'SOLICITADO');
 			assert.equal(body.stamp.rif, 'J-12345678-9');
 			assert.equal(body.stamp.taxpayer, 'Constructora Trujillo C.A.');
 			assert.equal(body.stamp.uuid[14], '4');
@@ -198,6 +198,39 @@ describe('emisión de timbres', () => {
 			assert.equal(claims.amount_ved, 49.5);
 			assert.equal(claims.issued_at, body.stamp.issuedAt);
 
+			const blockedPdf = await fetch(`${base}/api/v1/stamps/${body.stamp.uuid}/pdf`, {
+				headers: { cookie: ownerCookie }
+			});
+			assert.equal(blockedPdf.status, 409);
+
+			const removed = await fetch(`${base}/api/v1/saren/verify-stamp`, { method: 'POST' });
+			assert.equal(removed.status, 404);
+
+			const { rows: owners } = await client.query(
+				'SELECT id FROM taxpayers WHERE user_id = $1',
+				[owner]
+			);
+			await client.query(
+				`INSERT INTO payments (
+					taxpayer_id, tax_type, target_bank_account_id, bank_reference_number,
+					origin_bank, payment_date, amount_paid_ved, voucher_file_path,
+					voucher_media_type, voucher_content, related_kind, related_id,
+					status, verified_by, verified_at
+				) VALUES (
+					$1, 'TIMBRE_FISCAL', '00000000-0000-4000-8000-0000000000c1', 'TIMBRE-OK',
+					'Banco de prueba', CURRENT_DATE, 49.50, 'comprobante.pdf',
+					'application/pdf', $2, 'ELECTRONIC_STAMP', $3,
+					'VERIFICADO', $4, CURRENT_TIMESTAMP
+				)`,
+				[owners[0].id, Buffer.from('%PDF-1.4'), body.stamp.uuid, admin]
+			);
+			const approved = await fetch(`${base}/api/v1/stamps/${body.stamp.uuid}/resolve`, {
+				method: 'POST',
+				headers: { cookie: adminCookie, 'content-type': 'application/json' },
+				body: JSON.stringify({ decision: 'APROBAR' })
+			});
+			assert.equal(approved.status, 200);
+
 			const pdfRes = await fetch(`${base}/api/v1/stamps/${body.stamp.uuid}/pdf`, {
 				headers: { cookie: ownerCookie }
 			});
@@ -210,8 +243,8 @@ describe('emisión de timbres', () => {
 			const pdf = Buffer.from(await pdfRes.arrayBuffer());
 			assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
 			const decoded = qrTextFromPdf(pdf);
-			assert.equal(decoded, body.stamp.qrPayload);
-			assert.equal(verifyStampQr(decoded).uuid, body.stamp.uuid);
+			assert.equal(decoded, `http://localhost:5390/timbres/consulta/${body.stamp.uuid}`);
+			assert.equal(verifyStampQr(body.stamp.qrPayload).uuid, body.stamp.uuid);
 
 			const stranger = await fetch(`${base}/api/v1/stamps/${body.stamp.uuid}/pdf`, {
 				headers: { cookie: otherCookie }

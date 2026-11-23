@@ -8,20 +8,20 @@ import { requestMeta } from '../../lib/request-meta.js';
 
 const USER_COLUMNS = 'id, email, role, is_active, created_at, updated_at';
 
-/** GET /users/verificadores */
-export async function listVerifiers(_req, res) {
+/** GET /users/funcionarios */
+export async function listStaff(_req, res) {
 	const { rows } = await getPool().query(
 		`SELECT ${USER_COLUMNS}
 		 FROM users
-		 WHERE role = $1
+		 WHERE role = ANY($1::user_role[])
 		 ORDER BY created_at DESC`,
-		[ROLES.VERIFICADOR_SAREN]
+		[[ROLES.ANALISTA_RECAUDACION, ROLES.FISCALIZACION]]
 	);
 	res.json({ users: rows.map((row) => toUser(row)) });
 }
 
-/** POST /users/verificadores */
-export async function createVerifier(req, res) {
+/** POST /users/funcionarios */
+export async function createStaff(req, res) {
 	const passwordHash = await hashPassword(req.body.password);
 	const meta = requestMeta(req);
 
@@ -30,7 +30,7 @@ export async function createVerifier(req, res) {
 			`INSERT INTO users (email, password_hash, role)
 			 VALUES ($1, $2, $3)
 			 RETURNING ${USER_COLUMNS}`,
-			[req.body.email, passwordHash, ROLES.VERIFICADOR_SAREN]
+			[req.body.email, passwordHash, req.body.role]
 		);
 		const created = rows[0];
 		await writeAudit(client, {

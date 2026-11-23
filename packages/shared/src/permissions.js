@@ -12,9 +12,10 @@ export const PERMISSIONS = Object.freeze({
 	/** Alta de cuentas institucionales. Solo el administrador. */
 	CUENTAS_GESTIONAR: 'cuentas:gestionar',
 	TIMBRES_COMPRAR: 'timbres:comprar',
+	/** Aprobar o rechazar la solicitud de timbre. Recaudación y administrador. */
+	TIMBRES_RESOLVER: 'timbres:resolver',
 	PAGOS_REGISTRAR: 'pagos:registrar',
 	PAGOS_CONCILIAR: 'pagos:conciliar',
-	TIMBRES_CONSUMIR: 'timbres:consumir',
 	DASHBOARD_POA: 'dashboard:poa',
 	AUDITORIA_CONSULTAR: 'auditoria:consultar',
 	/** Alta de cuentas de personal. Solo el administrador del sistema. */
@@ -30,17 +31,24 @@ export const ROLE_PERMISSIONS = Object.freeze({
 		P.TIMBRES_COMPRAR,
 		P.PAGOS_REGISTRAR
 	]),
+	[ROLES.PERSONA_NATURAL]: Object.freeze([
+		P.PERFIL_GESTIONAR,
+		P.TIMBRES_COMPRAR,
+		P.PAGOS_REGISTRAR
+	]),
 	[ROLES.ANALISTA_RECAUDACION]: Object.freeze([
 		P.PERFIL_GESTIONAR,
-		P.DECLARACIONES_SUPERVISAR,
-		P.DASHBOARD_POA
-	]),
-	[ROLES.ANALISTA_TESORERIA]: Object.freeze([
-		P.PERFIL_GESTIONAR,
 		P.PAGOS_CONCILIAR,
+		P.CUENTAS_GESTIONAR,
+		P.TIMBRES_RESOLVER,
 		P.DASHBOARD_POA
 	]),
-	[ROLES.VERIFICADOR_SAREN]: Object.freeze([P.PERFIL_GESTIONAR, P.TIMBRES_CONSUMIR]),
+	[ROLES.FISCALIZACION]: Object.freeze([
+		P.PERFIL_GESTIONAR,
+		P.CONTRIBUYENTES_APROBAR,
+		P.DECLARACIONES_SUPERVISAR,
+		P.DECLARACIONES_RESOLVER
+	]),
 	[ROLES.ADMIN_SISTEMA]: Object.freeze(Object.values(PERMISSIONS))
 });
 

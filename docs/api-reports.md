@@ -2,7 +2,7 @@
 
 Contrato del módulo 07. La sesión es la cookie de [`api-auth.md`](api-auth.md).
 
-`ANALISTA_RECAUDACION`, `ANALISTA_TESORERIA` y `ADMIN_SISTEMA` tienen `dashboard:poa`. El contribuyente y el verificador SAREN reciben `403` en los tres reportes. Sin sesión, `401`.
+Recaudación y el administrador tienen `dashboard:poa`. El contribuyente, la persona natural y Fiscalización reciben `403` en los tres reportes. Sin sesión, `401`.
 
 La consulta de auditoría es solo del administrador (`auditoria:consultar`).
 

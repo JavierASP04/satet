@@ -2,9 +2,11 @@ import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 
 const STATUS_LABELS = {
+	SOLICITADO: 'Solicitado',
 	ACTIVO: 'Activo',
 	CONSUMIDO: 'Consumido',
-	ANULADO: 'Anulado'
+	ANULADO: 'Anulado',
+	RECHAZADO: 'Rechazado'
 };
 
 /** @param {string} payload */
@@ -73,6 +75,7 @@ function renderPdf(stamp, png) {
 			['Tasa BCV', `${stamp.bcvRate} VED por euro`],
 			['Bolívares', `${stamp.amountVed} VED`],
 			['Emitido', stamp.issuedAt],
+			['Caducidad', 'Pendiente de definir'],
 			['Estado', STATUS_LABELS[stamp.status] ?? stamp.status]
 		];
 		for (const [label, value] of rows) {
@@ -87,8 +90,11 @@ function renderPdf(stamp, png) {
 	});
 }
 
-/** @param {Parameters<typeof renderPdf>[0]} stamp */
-export async function renderStampPdf(stamp) {
-	const png = await createStampQrPng(stamp.qrPayload);
+/**
+ * @param {Parameters<typeof renderPdf>[0]} stamp
+ * @param {string} [qrText]
+ */
+export async function renderStampPdf(stamp, qrText = stamp.qrPayload) {
+	const png = await createStampQrPng(qrText);
 	return renderPdf(stamp, png);
 }

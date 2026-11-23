@@ -304,7 +304,11 @@ El texto del QR es un JSON con las claves de la especificación y una firma `sig
 
 La firma cubre el JSON de esos campos, sin `sig`, con las claves en el orden de la tabla. El secreto es `JWT_SECRET` del servidor. El navegador no firma ni verifica: muestra el serial y descarga el PDF. Una verificación que cambie un monto, el RIF o el serial tiene que fallar.
 
-El consumo en notaría, una sola vez, está en [`api-saren.md`](api-saren.md). Este módulo no cambia el estado a `CONSUMIDO`.
+El QR impreso es la dirección pública `/timbres/consulta/{uuid}`. El JSON firmado sigue guardado y no se publica. La compra nace `SOLICITADO`; el PDF responde `409` hasta que el pago esté verificado y Recaudación o el administrador aprueben la solicitud.
+
+La vigencia en días no está definida: la reunión dejó abiertos 7 y 15, sin elegir uno. `expiresAt`, `daysRemaining` y `validityDays` salen en `null`.
+
+No hay un rol que marque el timbre `CONSUMIDO`. El estado existe y la consulta lo muestra, pero quién lo consume quedó sin definir al retirar el SAREN.
 
 ## Errores
 

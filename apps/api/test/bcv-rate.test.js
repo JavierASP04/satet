@@ -156,7 +156,7 @@ describe('persistencia y endpoint', () => {
 		try {
 			const contribuyente = await insertUser(client, 'contribuyente@bcv.test', 'CONTRIBUYENTE');
 			const adminUser = await insertUser(client, 'admin@bcv.test', 'ADMIN_SISTEMA');
-			const saren = await insertUser(client, 'saren@bcv.test', 'VERIFICADOR_SAREN');
+			const saren = await insertUser(client, 'saren@bcv.test', 'FISCALIZACION');
 			const contribuyenteCookie = cookie(contribuyente);
 			const adminCookie = cookie(adminUser);
 			const sarenCookie = cookie(saren);

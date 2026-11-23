@@ -1,6 +1,8 @@
 # PLAN DE TRABAJO Y ESPECIFICACIÓN TÉCNICA DE REQUERIMIENTOS (SRS)
 ## SISTEMA INTEGRADO DE RECAUDACIÓN Y CONTROL TRIBUTARIO DEL ESTADO TRUJILLO (SATET)
 
+> El enum de roles y el módulo SAREN de este SRS quedaron sustituidos por [`api-requerimientos.md`](api-requerimientos.md). El enum vigente está en `database/schema.sql`.
+
 ---
 
 ### INSTRUCCIONES GENERALES PARA EL AGENTE DE CODIFICACIÓN (AI CODING ASSISTANT)

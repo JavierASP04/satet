@@ -121,9 +121,9 @@ En la individual, `declaration` en lugar de `declarations`.
 
 ## Regalías
 
-`POST /api/v1/royalties`. El volumen es la suma de los materiales declarados de ese contribuyente y ese año cuya declaración no esté `RECHAZADO`. El contribuyente indica el valor comercial y la forma de pago: `DINERO_TOTAL`, `DINERO_FRACCIONADO` o `ESPECIE`.
+`POST /api/v1/royalties` recibe el año y los metros cuadrados. El volumen y el valor comercial salen de las declaraciones de ese año que no estén `RECHAZADO` y tengan volumen. El monto es metros cuadrados × ese valor promedio × 7 / 100. La forma de pago la indica después el administrador. El detalle está en [`api-requerimientos.md`](api-requerimientos.md).
 
-El monto es el redondeo a 2 decimales de volumen × valor × 7 / 100. Una regalía por contribuyente y año; la segunda responde `409`.
+Una regalía por contribuyente y año; la segunda responde `409`.
 
 En dinero, total o fraccionado, hacen falta referencia, cuenta `MINERO` y comprobante. El fraccionado es un solo pago por el monto completo: no hay cuotas. En especie no se piden. Si el año no tiene producción declarada, `400`.
 
@@ -144,6 +144,6 @@ Rechazar una solicitud pendiente (`PATCH /api/v1/taxpayers/:id/approve` con `{ "
 - La transcripción dice «1 %» dentro del módulo titulado uno por mil. Se mantiene el divisor 1.000. Un 1 % multiplicaría el impuesto por diez y contradice el nombre del tributo.
 - «Aprobado» es el estado `VERIFICADO` que ya existía.
 - Los números de cuenta del esquema son ficticios.
-- El SAREN consume el QR una sola vez. El contrato está en [`api-saren.md`](api-saren.md). Un timbre `CONSUMIDO` no se vuelve a verificar.
+- El módulo SAREN se retiró. La consulta del timbre está en [`api-saren.md`](api-saren.md). Quién marca un timbre `CONSUMIDO` no quedó definido.
 - Los reportes del POA leen los pagos ya verificados. La meta proyectada no está en la especificación y no se inventa. El contrato está en [`api-reports.md`](api-reports.md).
 - El tabulador cargó los múltiplos fijos del tipo de cambio. El PDF no lista exoneraciones. Siguen fuera los porcentajes sobre obra o capital, y el numeral 3 del artículo 36, que no trae cifra. El cambio visual de la aplicación sigue pendiente. Las planillas sí llevan el texto de la Gobernación en verde y el aviso en rojo.

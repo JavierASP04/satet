@@ -8,6 +8,7 @@ import {
 } from '@satet/shared';
 import { getPool } from '../../db/pool.js';
 import { writeAudit } from '../../lib/audit.js';
+import { assertBankReferenceAvailable } from '../../lib/bank-reference.js';
 import { HttpError } from '../../lib/http.js';
 import { requireBankAccount } from '../../lib/payment-fields.js';
 import { renderPlanilla, sendPdf } from '../../lib/planilla.js';
@@ -171,6 +172,7 @@ async function createOrders(req, orders) {
 	const client = await getPool().connect();
 	try {
 		await client.query('BEGIN');
+		await assertBankReferenceAvailable(client, req.body.bankReferenceNumber);
 		const account = await requireBankAccount(client, req.body.bankAccountId, TAX_TYPES.UN_POR_MIL);
 		const filing = await client.query(
 			`INSERT INTO one_per_thousand_filings (

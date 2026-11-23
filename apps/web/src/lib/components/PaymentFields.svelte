@@ -3,6 +3,8 @@
 	import TextField from '#lib/components/TextField.svelte';
 
 	let { accounts = [], reference = '', accountId = '' } = $props();
+	let selectedId = $state(accountId);
+	let copied = $state(false);
 
 	const options = $derived(
 		accounts.map((account) => ({
@@ -10,6 +12,18 @@
 			label: `${account.bankName} · ${account.accountNumber}`
 		}))
 	);
+	const selected = $derived(
+		accounts.find((account) => account.id === (selectedId || options[0]?.value)) ?? null
+	);
+
+	async function copyAccount() {
+		if (!selected) return;
+		const text = [selected.bankName, selected.accountNumber, selected.holderName]
+			.filter(Boolean)
+			.join('\n');
+		await navigator.clipboard.writeText(text);
+		copied = true;
+	}
 </script>
 
 <fieldset>
@@ -31,8 +45,15 @@
 				name="bankAccountId"
 				required
 				{options}
-				value={accountId || options[0].value}
+				value={selectedId || options[0].value}
+				onchange={(event) => {
+					selectedId = event.currentTarget.value;
+					copied = false;
+				}}
 			/>
+			<button type="button" class="copy" onclick={copyAccount}>
+				{copied ? 'Datos copiados' : 'Copiar datos'}
+			</button>
 		{/if}
 		<label class="file">
 			<span>Comprobante (JPEG, PNG o PDF, hasta 2 MB)</span>
@@ -75,5 +96,14 @@
 		margin: 0;
 		color: var(--danger, #9b1c1c);
 		font-size: 0.92rem;
+	}
+
+	.copy {
+		justify-self: start;
+		padding: 0.45rem 0.75rem;
+		border: 1px solid var(--line);
+		border-radius: 0.7rem;
+		background: #fff;
+		cursor: pointer;
 	}
 </style>

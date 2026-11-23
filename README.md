@@ -103,7 +103,7 @@ El módulo 01 y `GET /bcv-rate/current` responden de verdad. El resto de endpoin
 | 03 Impuesto 1 x 1000              | `/uno-por-mil`, `/uno-por-mil/cargar`                                   | `one-per-thousand/batch`, `one-per-thousand/single`, `one-per-thousand/list`                                    |
 | 04 Timbres y tasa BCV             | `/timbres`, `/timbres/comprar`                                          | `bcv-rate/current` (implementado). `stamps/purchase` y `stamps/:uuid/pdf` siguen en `501`                       |
 | 05 Pagos y conciliación           | `/pagos/registrar`, `/pagos/conciliacion`                               | `payments/upload`, `payments/pending`, `payments/:id/verify`, `payments/:id/reject`                             |
-| 06 Verificación SAREN             | `/saren/verificar`, `/saren/historial`                                  | `saren/verify-stamp`, `saren/history`                                                                           |
+| 06 Consulta del timbre            | `/timbres/consulta/[uuid]`                                              | `stamps/public/:uuid`. No hay módulo SAREN.                                                                     |
 | 07 Reportes, auditoría y POA      | `/panel`, `/reportes`, `/auditoria`                                     | `reports/revenue-summary`, `reports/export/excel`, `reports/export/pdf`, `audit/logs`                           |
 
 ## Notas de SvelteKit 3

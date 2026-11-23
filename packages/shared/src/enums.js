@@ -20,9 +20,11 @@ export const PAYMENT_STATUS = Object.freeze({
 });
 
 export const STAMP_STATUS = Object.freeze({
+	SOLICITADO: 'SOLICITADO',
 	ACTIVO: 'ACTIVO',
 	CONSUMIDO: 'CONSUMIDO',
-	ANULADO: 'ANULADO'
+	ANULADO: 'ANULADO',
+	RECHAZADO: 'RECHAZADO'
 });
 
 export const MINING_ACTIVITIES = Object.freeze({

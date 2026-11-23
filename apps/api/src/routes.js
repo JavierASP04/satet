@@ -8,7 +8,6 @@ import { onePerThousandRouter } from './modules/one-per-thousand/one-per-thousan
 import { paymentsRouter } from './modules/payments/payments.routes.js';
 import { reportsRouter } from './modules/reports/reports.routes.js';
 import { royaltiesRouter } from './modules/royalties/royalties.routes.js';
-import { sarenRouter } from './modules/saren/saren.routes.js';
 import { stampsRouter } from './modules/stamps/stamps.routes.js';
 import { taxpayersRouter } from './modules/taxpayers/taxpayers.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
@@ -30,8 +29,6 @@ apiRouter.use('/stamps', stampsRouter);
 apiRouter.use('/bcv-rate', bcvRateRouter);
 // Módulo 05
 apiRouter.use('/payments', paymentsRouter);
-// Módulo 06
-apiRouter.use('/saren', sarenRouter);
 // Módulo 07
 apiRouter.use('/reports', reportsRouter);
 apiRouter.use('/audit', auditRouter);

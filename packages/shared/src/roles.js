@@ -1,16 +1,16 @@
 /** Espejo del enum `user_role` de `database/schema.sql`. */
 export const ROLES = Object.freeze({
 	CONTRIBUYENTE: 'CONTRIBUYENTE',
+	PERSONA_NATURAL: 'PERSONA_NATURAL',
 	ANALISTA_RECAUDACION: 'ANALISTA_RECAUDACION',
-	ANALISTA_TESORERIA: 'ANALISTA_TESORERIA',
-	VERIFICADOR_SAREN: 'VERIFICADOR_SAREN',
+	FISCALIZACION: 'FISCALIZACION',
 	ADMIN_SISTEMA: 'ADMIN_SISTEMA'
 });
 
 export const ROLE_LABELS = Object.freeze({
 	CONTRIBUYENTE: 'Contribuyente',
-	ANALISTA_RECAUDACION: 'Analista de Recaudación',
-	ANALISTA_TESORERIA: 'Analista de Tesorería',
-	VERIFICADOR_SAREN: 'Verificador SAREN',
-	ADMIN_SISTEMA: 'Administrador del Sistema'
+	PERSONA_NATURAL: 'Persona natural',
+	ANALISTA_RECAUDACION: 'Recaudación',
+	FISCALIZACION: 'Fiscalización',
+	ADMIN_SISTEMA: 'Administrador'
 });
