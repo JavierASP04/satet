@@ -1,4 +1,4 @@
-import { ERROR_CODES } from '@satet/shared';
+import { ERROR_CODES, STAMP_VALIDITY_DAYS } from '@satet/shared';
 import { getPool } from '../../db/pool.js';
 import { HttpError } from '../../lib/http.js';
 import { buildXlsx } from '../../lib/xlsx.js';
@@ -272,7 +272,7 @@ async function loadStampReport(range) {
 		usersServed: sold.rows[0].users,
 		stampsSold: sold.rows[0].sold,
 		amountCollectedVed: money(collected.rows[0].total_ved),
-		validityDays: null
+		validityDays: STAMP_VALIDITY_DAYS
 	};
 }
 

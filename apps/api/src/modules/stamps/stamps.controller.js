@@ -9,7 +9,7 @@ import { formatFixed, toStamp } from '../../lib/present.js';
 import { requestMeta } from '../../lib/request-meta.js';
 import { env } from '../../config/env.js';
 import { findCurrentBcvRate } from '../bcv-rate/bcv-rate.store.js';
-import { renderStampPdf } from './stamps.pdf.js';
+import { renderStampPdf, stampValidity } from './stamps.pdf.js';
 import { signStampQr } from './stamps.qr.js';
 
 const STAMP_COLUMNS = `
@@ -215,18 +215,19 @@ export async function publicView(req, res) {
 	const row = rows[0];
 	if (!row) throw new HttpError(404, ERROR_CODES.NOT_FOUND, 'No se encontró el timbre.');
 	const stamp = toStamp(row);
+	const validity = stampValidity(stamp.issuedAt);
+	const expired = stamp.status === STAMP_STATUS.ACTIVO && validity.expired;
 	res.status(200).json({
 		serial: stamp.uuid,
 		issuedAt: stamp.issuedAt,
-		expiresAt: null,
-		daysRemaining: null,
-		validityDays: null,
-		validityNote:
-			'La vigencia en días no está definida: la reunión dejó abiertos 7 y 15 días, sin elegir uno.',
+		expiresAt: validity.expiresAt,
+		daysRemaining: validity.daysRemaining,
+		validityDays: validity.validityDays,
+		validityNote: expired ? `Venció el ${validity.expiresLabel}` : validity.expiresLabel,
 		concept: stamp.concept ?? null,
 		status: stamp.status,
-		statusLabel: PUBLIC_STATUS[stamp.status] ?? stamp.status,
-		reusable: stamp.status === STAMP_STATUS.ACTIVO,
+		statusLabel: expired ? 'Vencido' : (PUBLIC_STATUS[stamp.status] ?? stamp.status),
+		reusable: stamp.status === STAMP_STATUS.ACTIVO && !validity.expired,
 		rif: stamp.rif,
 		taxpayer: stamp.taxpayer,
 		amountEur: stamp.amountEur,

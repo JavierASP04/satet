@@ -183,6 +183,13 @@ describe('emisión de timbres', () => {
 			assert.equal(body.stamp.bcvRate, '41.2500');
 			assert.equal(body.stamp.amountVed, '49.50');
 			assert.equal(body.stamp.status, 'SOLICITADO');
+			const consulta = await fetch(`${base}/api/v1/stamps/public/${body.stamp.uuid}`);
+			assert.equal(consulta.status, 200);
+			const publica = await consulta.json();
+			assert.equal(publica.validityDays, 15);
+			assert.equal(publica.daysRemaining, 15);
+			assert.equal(typeof publica.expiresAt, 'string');
+			assert.equal(publica.validityNote.includes('Pendiente'), false);
 			assert.equal(body.stamp.rif, 'J-12345678-9');
 			assert.equal(body.stamp.taxpayer, 'Constructora Trujillo C.A.');
 			assert.equal(body.stamp.uuid[14], '4');

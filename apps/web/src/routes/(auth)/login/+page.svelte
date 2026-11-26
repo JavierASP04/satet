@@ -14,6 +14,7 @@
 </svelte:head>
 
 <EntryScreen title="Iniciar sesión" lede="Correo de contribuyente o de funcionario.">
+	<Button href="/manual" variant="ghost">Manual de usuario</Button>
 	{#if data.registered}
 		<Alert tone="ok">
 			Cuenta creada. Ya puedes entrar. Las declaraciones quedan bloqueadas hasta que Recaudación apruebe el expediente.

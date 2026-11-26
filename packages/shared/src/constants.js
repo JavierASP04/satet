@@ -34,6 +34,9 @@ export const DECLARATION_DEADLINE_DAY = 10;
 /** Regalía anual sobre el volumen declarado del año, en %. */
 export const ROYALTY_TAX_RATE = 7;
 
+/** Días de vigencia del timbre fiscal, contados desde la emisión. */
+export const STAMP_VALIDITY_DAYS = 15;
+
 /** Divisor del impuesto 1 x 1000 (Módulo 03). */
 export const ONE_PER_THOUSAND_DIVISOR = 1000;
 

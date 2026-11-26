@@ -20,6 +20,7 @@
 				{APP_NAME}
 			</a>
 			<nav>
+				<Button href="/manual" variant="inverse">Manual</Button>
 				{#if data.user}
 					<Button href="/panel" variant="light">Ir al panel</Button>
 				{:else}

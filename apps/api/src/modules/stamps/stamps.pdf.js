@@ -1,3 +1,4 @@
+import { STAMP_VALIDITY_DAYS } from '@satet/shared';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 
@@ -75,7 +76,8 @@ function renderPdf(stamp, png) {
 			['Tasa BCV', `${stamp.bcvRate} VED por euro`],
 			['Bolívares', `${stamp.amountVed} VED`],
 			['Emitido', stamp.issuedAt],
-			['Caducidad', 'Pendiente de definir'],
+			['Caducidad', expiryLabel(stamp.issuedAt)],
+			['Vigencia', `${STAMP_VALIDITY_DAYS} días`],
 			['Estado', STATUS_LABELS[stamp.status] ?? stamp.status]
 		];
 		for (const [label, value] of rows) {
@@ -88,6 +90,33 @@ function renderPdf(stamp, png) {
 		doc.image(png, { width: 180 });
 		doc.end();
 	});
+}
+
+/**
+ * La vigencia corre 15 días desde el instante de emisión.
+ * @param {string} issuedAt
+ * @param {Date} [now]
+ */
+export function stampValidity(issuedAt, now = new Date()) {
+	const issued = new Date(issuedAt);
+	const expires = new Date(issued.getTime() + STAMP_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
+	const remainingMs = expires.getTime() - now.getTime();
+	return {
+		expiresAt: expires.toISOString(),
+		daysRemaining: remainingMs <= 0 ? 0 : Math.ceil(remainingMs / (24 * 60 * 60 * 1000)),
+		validityDays: STAMP_VALIDITY_DAYS,
+		expiresLabel: expiryLabel(issuedAt),
+		expired: remainingMs <= 0
+	};
+}
+
+/** @param {string} issuedAt */
+function expiryLabel(issuedAt) {
+	const expires = new Date(new Date(issuedAt).getTime() + STAMP_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
+	return new Intl.DateTimeFormat('es-VE', {
+		dateStyle: 'long',
+		timeZone: 'America/Caracas'
+	}).format(expires);
 }
 
 /**

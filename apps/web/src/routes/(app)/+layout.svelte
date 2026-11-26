@@ -116,6 +116,7 @@
 					<p>{ROLE_LABELS[data.user.role] ?? data.user.role}</p>
 				</div>
 			</div>
+			<Button href="/manual" variant="ghost">Manual</Button>
 			<form method="POST" action="/salir">
 				<Button type="submit" variant="ghost">Cerrar sesión</Button>
 			</form>

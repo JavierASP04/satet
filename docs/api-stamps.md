@@ -306,7 +306,7 @@ La firma cubre el JSON de esos campos, sin `sig`, con las claves en el orden de 
 
 El QR impreso es la dirección pública `/timbres/consulta/{uuid}`. El JSON firmado sigue guardado y no se publica. La compra nace `SOLICITADO`; el PDF responde `409` hasta que el pago esté verificado y Recaudación o el administrador aprueben la solicitud.
 
-La vigencia en días no está definida: la reunión dejó abiertos 7 y 15, sin elegir uno. `expiresAt`, `daysRemaining` y `validityDays` salen en `null`.
+La vigencia es de 15 días desde la emisión. `validityDays` es `15`. `expiresAt` es ese instante y `daysRemaining` cuenta hacia atrás hasta cero. Si el timbre sigue activo y ya venció, la consulta lo muestra como vencido.
 
 No hay un rol que marque el timbre `CONSUMIDO`. El estado existe y la consulta lo muestra, pero quién lo consume quedó sin definir al retirar el SAREN.
 

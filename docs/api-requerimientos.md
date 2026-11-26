@@ -28,7 +28,7 @@ La compra nace `SOLICITADO`. `GET /stamps/:uuid/pdf` responde `409` mientras no 
 
 `POST /stamps/:uuid/resolve` con `decision` `APROBAR` exige un pago `VERIFICADO` de ese timbre. `RECHAZAR` exige `rejectionReason`.
 
-`GET /stamps/public/:uuid` no pide sesión. Devuelve serial, emisión, concepto, estado y montos. `expiresAt`, `daysRemaining` y `validityDays` van en `null`: la reunión dejó abiertos 7 y 15 días y no eligió uno. El QR impreso abre `/timbres/consulta/{uuid}`. El JSON firmado se guarda y no se publica.
+`GET /stamps/public/:uuid` no pide sesión. Devuelve serial, emisión, caducidad, días restantes, concepto, estado y montos. La vigencia es de 15 días desde la emisión: `validityDays` es `15`. El QR impreso abre `/timbres/consulta/{uuid}`. El JSON firmado se guarda y no se publica.
 
 Nadie quedó encargado de pasar un timbre a `CONSUMIDO` después de retirar el SAREN. El estado existe; no hay un endpoint nuevo para marcarlo.
 
@@ -42,7 +42,5 @@ Nadie quedó encargado de pasar un timbre a `CONSUMIDO` después de retirar el S
 
 ## Pendiente porque el documento no da el dato
 
-- Días de vigencia del timbre: 7 o 15, sin decisión.
-- Manual de usuario: no hay texto que publicar.
 - Acceso desde fuera del país: el sistema ya es web; el despliegue no está en el documento.
 - Quién marca un timbre como consumido.

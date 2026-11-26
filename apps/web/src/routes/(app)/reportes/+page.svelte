@@ -267,7 +267,7 @@
 						<p class="note">
 							Timbres vendidos: {summary.stamps.stampsSold}. Usuarios atendidos:
 							{summary.stamps.usersServed}. Recaudado:
-							{formatVedText(summary.stamps.amountCollectedVed)}. La vigencia en días no está definida.
+							{formatVedText(summary.stamps.amountCollectedVed)}. Cada timbre dura {summary.stamps.validityDays} días.
 						</p>
 					{/if}
 					<div class="actions">
