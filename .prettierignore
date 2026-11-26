@@ -1,0 +1,7 @@
+package-lock.json
+node_modules
+.svelte-kit
+build
+dist
+index.html
+docs/especificacion-satet.md
